@@ -10,11 +10,12 @@ CREATE TABLE transactions (
   id SERIAL PRIMARY KEY,
   type transaction_type,
   amount DECIMAL,
-  executed TIMESTAMP
+  description TEXT,
+  executed TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
-INSERT INTO transactions(type, amount, executed) 
-  VALUES ('input', '55.23', '2021-06-17 04:05:06 -4:00');
+INSERT INTO transactions(type, amount, description) 
+  VALUES ('input', '55.23', 'grasa');
 
-INSERT INTO transactions(type, amount, executed) 
-  VALUES ('output', '23.00', '2021-05-09 08:09:12 -4:00');
+INSERT INTO transactions(type, amount, description) 
+  VALUES ('output', '23.00', 'bornes');

@@ -16,6 +16,7 @@ type Transaction struct {
 	Id       int
 	Type     string
 	Amount   float32
+	Description string
 	Executed string
 }
 
@@ -60,7 +61,7 @@ func GetTransactions(w http.ResponseWriter, r *http.Request, _ httprouter.Params
 	defer rows.Close()
 	for rows.Next() {
 		transaction := Transaction{}
-		if err := rows.Scan(&transaction.Id, &transaction.Type, &transaction.Amount, &transaction.Executed); err != nil {
+		if err := rows.Scan(&transaction.Id, &transaction.Type, &transaction.Amount, &transaction.Description, &transaction.Executed); err != nil {
 			log.Fatal(err)
 		}
 		transactions = append(transactions, transaction)
@@ -83,7 +84,7 @@ func CreateTransaction(w http.ResponseWriter, r *http.Request, _ httprouter.Para
 	if err != nil {
 		fmt.Fprintf(w, "La data enviada no corresponde con una transacción")
 	}
-	query := fmt.Sprintf("INSERT INTO transactions(type, amount, executed) VALUES ('%v', '%v', '%v') RETURNING id, type, amount, executed;", transaction.Type, transaction.Amount, transaction.Executed)
+	query := fmt.Sprintf("INSERT INTO transactions(type, amount, description) VALUES ('%v', '%v', '%v') RETURNING id, type, amount, description, executed;", transaction.Type, transaction.Amount, transaction.Description)
 	inserted_transaction := Transaction{}
 	rows, err := db.Query(query)
 	if err != nil {
@@ -91,7 +92,7 @@ func CreateTransaction(w http.ResponseWriter, r *http.Request, _ httprouter.Para
 	}
 	defer rows.Close()
 	for rows.Next() {
-		if err := rows.Scan(&inserted_transaction.Id, &inserted_transaction.Type, &inserted_transaction.Amount, &inserted_transaction.Executed); err != nil {
+		if err := rows.Scan(&inserted_transaction.Id, &inserted_transaction.Type, &inserted_transaction.Amount, &inserted_transaction.Description, &inserted_transaction.Executed); err != nil {
 			log.Fatal(err)
 		}
 	}
