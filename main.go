@@ -25,6 +25,11 @@ type Response struct {
 	Payload interface{}
 }
 
+type PartialTransaction struct {
+	Id int
+	Description string
+}
+
 var db *sql.DB
 
 func init() {
@@ -44,6 +49,7 @@ func main() {
 
 	router.GET("/transactions", GetTransactions)
 	router.POST("/transactions", CreateTransaction)
+	router.PATCH("/transactions", PatchTransaction)
 
 	log.Fatal(http.ListenAndServe(":8080", router))
 }
@@ -54,7 +60,7 @@ func Index(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 
 func GetTransactions(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	transactions := []Transaction{}
-	rows, err := db.Query("SELECT * FROM transactions;")
+	rows, err := db.Query("SELECT * FROM transactions ORDER BY id ASC;")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -85,20 +91,55 @@ func CreateTransaction(w http.ResponseWriter, r *http.Request, _ httprouter.Para
 		fmt.Fprintf(w, "La data enviada no corresponde con una transacción")
 	}
 	query := fmt.Sprintf("INSERT INTO transactions(type, amount, description) VALUES ('%v', '%v', '%v') RETURNING id, type, amount, description, executed;", transaction.Type, transaction.Amount, transaction.Description)
-	inserted_transaction := Transaction{}
+	insertedTransaction := Transaction{}
 	rows, err := db.Query(query)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer rows.Close()
 	for rows.Next() {
-		if err := rows.Scan(&inserted_transaction.Id, &inserted_transaction.Type, &inserted_transaction.Amount, &inserted_transaction.Description, &inserted_transaction.Executed); err != nil {
+		if err := rows.Scan(&insertedTransaction.Id, &insertedTransaction.Type, &insertedTransaction.Amount, &insertedTransaction.Description, &insertedTransaction.Executed); err != nil {
 			log.Fatal(err)
 		}
 	}
 	response_data := Response{
 		Message: "Transacción creada existosamente",
-		Payload: inserted_transaction,
+		Payload: insertedTransaction,
+	}
+	response, err := json.Marshal(response_data)
+	if err != nil {
+		log.Fatal(err)
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(response)
+}
+
+func PatchTransaction(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	partialTransaction := PartialTransaction{}
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		fmt.Fprintf(w, "No se pudo leer el cuerpo de la petición")
+	}
+	err = json.Unmarshal(body, &partialTransaction)
+	if err != nil {
+		fmt.Fprintf(w, "La data enviada no corresponde con una transacción parcial")
+	}
+	query := fmt.Sprintf("UPDATE transactions SET description='%v' WHERE id='%v' RETURNING id, type, amount, description, executed;", partialTransaction.Description, partialTransaction.Id)
+
+	modifiedTransaction := Transaction{}
+	rows, err := db.Query(query)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		if err := rows.Scan(&modifiedTransaction.Id, &modifiedTransaction.Type, &modifiedTransaction.Amount, &modifiedTransaction.Description, &modifiedTransaction.Executed); err != nil {
+			log.Fatal(err)
+		}
+	}
+	response_data := Response{
+		Message: "Transacción modificada existosamente",
+		Payload: modifiedTransaction,
 	}
 	response, err := json.Marshal(response_data)
 	if err != nil {
