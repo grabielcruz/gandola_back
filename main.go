@@ -13,11 +13,11 @@ import (
 )
 
 type Transaction struct {
-	Id       int
-	Type     string
-	Amount   float32
+	Id          int
+	Type        string
+	Amount      float32
 	Description string
-	Executed string
+	Executed    string
 }
 
 type Response struct {
@@ -26,7 +26,7 @@ type Response struct {
 }
 
 type PartialTransaction struct {
-	Id int
+	Id          int
 	Description string
 }
 
@@ -50,6 +50,7 @@ func main() {
 	router.GET("/transactions", GetTransactions)
 	router.POST("/transactions", CreateTransaction)
 	router.PATCH("/transactions", PatchTransaction)
+	router.DELETE("/transactions", DeleteTransaction) //Delete only the last transaction
 
 	log.Fatal(http.ListenAndServe(":8080", router))
 }
@@ -140,6 +141,46 @@ func PatchTransaction(w http.ResponseWriter, r *http.Request, _ httprouter.Param
 	response_data := Response{
 		Message: "Transacción modificada existosamente",
 		Payload: modifiedTransaction,
+	}
+	response, err := json.Marshal(response_data)
+	if err != nil {
+		log.Fatal(err)
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(response)
+}
+
+func DeleteTransaction(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	deletedTransactionId := -1
+	query := "DELETE FROM transactions WHERE id in (SELECT id FROM transactions ORDER BY id desc LIMIT 1) RETURNING id;"
+	rows, err := db.Query(query)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		if err := rows.Scan(&deletedTransactionId); err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	if deletedTransactionId == -1 {
+		response_data := Response{
+			Message: "No quedan más transacciones por eliminar por lo que no se pudo eliminar ninguna transacción",
+			Payload: deletedTransactionId,
+		}
+		response, err := json.Marshal(response_data)
+		if err != nil {
+			log.Fatal(err)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(response)
+		return
+	}
+	
+	response_data := Response{
+		Message: "Transacción eliminada exitosamente",
+		Payload: deletedTransactionId,
 	}
 	response, err := json.Marshal(response_data)
 	if err != nil {
