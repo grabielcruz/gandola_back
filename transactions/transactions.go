@@ -29,6 +29,9 @@ type PartialTransaction struct {
 	Description string
 }
 
+func Index(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	fmt.Fprintf(w, "Server working")
+}
 
 func GetTransactions(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	transactions := []Transaction{}
