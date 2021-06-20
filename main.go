@@ -50,7 +50,7 @@ func main() {
 	router.GET("/transactions", GetTransactions)
 	router.POST("/transactions", CreateTransaction)
 	router.PATCH("/transactions", PatchTransaction)
-	router.DELETE("/transactions", DeleteTransaction) //Delete only the last transaction
+	router.DELETE("/transactions", DeleteLastTransaction) //Delete only the last transaction
 
 	log.Fatal(http.ListenAndServe(":8080", router))
 }
@@ -138,6 +138,21 @@ func PatchTransaction(w http.ResponseWriter, r *http.Request, _ httprouter.Param
 			log.Fatal(err)
 		}
 	}
+
+	if modifiedTransaction.Id == 0 {
+		response_data := Response{
+			Message: "La transacción con el id indicado no existe",
+			Payload: partialTransaction.Id,
+		}
+		response, err := json.Marshal(response_data)
+		if err != nil {
+			log.Fatal(err)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(response)
+		return
+	}
+
 	response_data := Response{
 		Message: "Transacción modificada existosamente",
 		Payload: modifiedTransaction,
@@ -150,7 +165,7 @@ func PatchTransaction(w http.ResponseWriter, r *http.Request, _ httprouter.Param
 	w.Write(response)
 }
 
-func DeleteTransaction(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+func DeleteLastTransaction(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	deletedTransactionId := -1
 	query := "DELETE FROM transactions WHERE id in (SELECT id FROM transactions ORDER BY id desc LIMIT 1) RETURNING id;"
 	rows, err := db.Query(query)
@@ -177,7 +192,7 @@ func DeleteTransaction(w http.ResponseWriter, r *http.Request, _ httprouter.Para
 		w.Write(response)
 		return
 	}
-	
+
 	response_data := Response{
 		Message: "Transacción eliminada exitosamente",
 		Payload: deletedTransactionId,
