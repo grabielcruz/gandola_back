@@ -19,6 +19,15 @@ type Transaction struct {
 	Executed    string
 }
 
+type TransactionWithBalance struct {
+	Id          int
+	Type        string
+	Amount      float32
+	Description string
+	Executed    string
+	Balance float32
+}
+
 type Response struct {
 	Message string
 	Payload interface{}
@@ -34,17 +43,17 @@ func Index(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 }
 
 func GetTransactions(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	transactions := []Transaction{}
+	transactions := []TransactionWithBalance{}
 	db := database.ConnectDB()
 	defer db.Close()
-	rows, err := db.Query("SELECT * FROM transactions ORDER BY id ASC;")
+	rows, err := db.Query("SELECT * FROM transactions_with_balances ORDER BY id ASC;")
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer rows.Close()
 	for rows.Next() {
-		transaction := Transaction{}
-		if err := rows.Scan(&transaction.Id, &transaction.Type, &transaction.Amount, &transaction.Description, &transaction.Executed); err != nil {
+		transaction := TransactionWithBalance{}
+		if err := rows.Scan(&transaction.Id, &transaction.Type, &transaction.Amount, &transaction.Description, &transaction.Balance, &transaction.Executed); err != nil {
 			log.Fatal(err)
 		}
 		transactions = append(transactions, transaction)
@@ -67,17 +76,40 @@ func CreateTransaction(w http.ResponseWriter, r *http.Request, _ httprouter.Para
 	if err != nil {
 		fmt.Fprintf(w, "La data enviada no corresponde con una transacción")
 	}
-	query := fmt.Sprintf("INSERT INTO transactions(type, amount, description) VALUES ('%v', '%v', '%v') RETURNING id, type, amount, description, executed;", transaction.Type, transaction.Amount, transaction.Description)
-	insertedTransaction := Transaction{}
+
 	db := database.ConnectDB()
 	defer db.Close()
+
+	var lastBalance float32
+	var newBalance float32
+	getLastBalanceQuery := "SELECT balance FROM transactions_with_balances ORDER BY id desc LIMIT 1"
+	lastTransactionRow, err := db.Query(getLastBalanceQuery)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer lastTransactionRow.Close()
+	for lastTransactionRow.Next() {
+		if err := lastTransactionRow.Scan(&lastBalance); err != nil {
+			log.Fatal(err)
+		}
+	}
+	if (transaction.Type == "input") {
+		newBalance = lastBalance + transaction.Amount
+	} else if (transaction.Type == "output") {
+		// TODO: check for negative balance and Type of transaction not allowed
+		newBalance = lastBalance - transaction.Amount
+	}
+
+	insertedTransaction := TransactionWithBalance{}
+	query := fmt.Sprintf("INSERT INTO transactions_with_balances(type, amount, description, balance) VALUES ('%v', '%v', '%v', '%v') RETURNING id, type, amount, description, balance, executed;", transaction.Type, transaction.Amount, transaction.Description, newBalance)
+
 	rows, err := db.Query(query)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer rows.Close()
 	for rows.Next() {
-		if err := rows.Scan(&insertedTransaction.Id, &insertedTransaction.Type, &insertedTransaction.Amount, &insertedTransaction.Description, &insertedTransaction.Executed); err != nil {
+		if err := rows.Scan(&insertedTransaction.Id, &insertedTransaction.Type, &insertedTransaction.Amount, &insertedTransaction.Description, &insertedTransaction.Balance, &insertedTransaction.Executed); err != nil {
 			log.Fatal(err)
 		}
 	}
