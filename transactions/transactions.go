@@ -25,7 +25,7 @@ type TransactionWithBalance struct {
 	Amount      float32
 	Description string
 	Executed    string
-	Balance float32
+	Balance     float32
 }
 
 type Response struct {
@@ -93,17 +93,29 @@ func CreateTransaction(w http.ResponseWriter, r *http.Request, _ httprouter.Para
 			log.Fatal(err)
 		}
 	}
-	if (transaction.Type == "input") {
+	if transaction.Type == "input" {
 		newBalance = lastBalance + transaction.Amount
-	} else if (transaction.Type == "output") {
-		// TODO: check for negative balance and Type of transaction not allowed
+	} else if transaction.Type == "output" {
 		newBalance = lastBalance - transaction.Amount
+		if (newBalance < 0) {
+			response_data := Response{
+				Message: "No se puede ejecutar esta transacción porque su balance no puede bajar de cero (0)",
+				Payload: transaction,
+			}
+			response, err := json.Marshal(response_data)
+			if err != nil {
+				log.Fatal(err)
+			}
+			w.Header().Set("Content-Type", "application/json")
+			w.Write(response)
+			return
+		}
 	}
 
 	insertedTransaction := TransactionWithBalance{}
-	query := fmt.Sprintf("INSERT INTO transactions_with_balances(type, amount, description, balance) VALUES ('%v', '%v', '%v', '%v') RETURNING id, type, amount, description, balance, executed;", transaction.Type, transaction.Amount, transaction.Description, newBalance)
+	insertedTransactionQuery := fmt.Sprintf("INSERT INTO transactions_with_balances(type, amount, description, balance) VALUES ('%v', '%v', '%v', '%v') RETURNING id, type, amount, description, balance, executed;", transaction.Type, transaction.Amount, transaction.Description, newBalance)
 
-	rows, err := db.Query(query)
+	rows, err := db.Query(insertedTransactionQuery)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -125,6 +137,7 @@ func CreateTransaction(w http.ResponseWriter, r *http.Request, _ httprouter.Para
 	w.Write(response)
 }
 
+// TODO: forbid modification of transaction zero
 func PatchTransaction(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	partialTransaction := PartialTransaction{}
 	body, err := ioutil.ReadAll(r.Body)
@@ -135,9 +148,9 @@ func PatchTransaction(w http.ResponseWriter, r *http.Request, _ httprouter.Param
 	if err != nil {
 		fmt.Fprintf(w, "La data enviada no corresponde con una transacción parcial")
 	}
-	query := fmt.Sprintf("UPDATE transactions SET description='%v' WHERE id='%v' RETURNING id, type, amount, description, executed;", partialTransaction.Description, partialTransaction.Id)
+	query := fmt.Sprintf("UPDATE transactions_with_balances SET description='%v' WHERE id='%v' RETURNING id, type, amount, description, balance, executed;", partialTransaction.Description, partialTransaction.Id)
 
-	modifiedTransaction := Transaction{}
+	modifiedTransaction := TransactionWithBalance{}
 	db := database.ConnectDB()
 	defer db.Close()
 	rows, err := db.Query(query)
@@ -146,7 +159,7 @@ func PatchTransaction(w http.ResponseWriter, r *http.Request, _ httprouter.Param
 	}
 	defer rows.Close()
 	for rows.Next() {
-		if err := rows.Scan(&modifiedTransaction.Id, &modifiedTransaction.Type, &modifiedTransaction.Amount, &modifiedTransaction.Description, &modifiedTransaction.Executed); err != nil {
+		if err := rows.Scan(&modifiedTransaction.Id, &modifiedTransaction.Type, &modifiedTransaction.Amount, &modifiedTransaction.Description, &modifiedTransaction.Balance, &modifiedTransaction.Executed); err != nil {
 			log.Fatal(err)
 		}
 	}
@@ -181,7 +194,7 @@ func DeleteLastTransaction(w http.ResponseWriter, r *http.Request, _ httprouter.
 	deletedTransactionId := -1
 	db := database.ConnectDB()
 	defer db.Close()
-	query := "DELETE FROM transactions WHERE id in (SELECT id FROM transactions ORDER BY id desc LIMIT 1) RETURNING id;"
+	query := "DELETE FROM transactions_with_balances WHERE id != 1 AND id in (SELECT id FROM transactions_with_balances ORDER BY id desc LIMIT 1) RETURNING id;"
 	rows, err := db.Query(query)
 	if err != nil {
 		log.Fatal(err)
