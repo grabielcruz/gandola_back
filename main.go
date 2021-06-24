@@ -7,7 +7,6 @@ import (
 	"example.com/backend_gandola_soft/transactions"
 
 	"github.com/julienschmidt/httprouter"
-	_ "github.com/lib/pq"
 )
 
 func main() {

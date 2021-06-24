@@ -17,9 +17,3 @@ CREATE TABLE transactions_with_balances (
 
 INSERT INTO transactions_with_balances(type, amount, description, balance)
   VALUES ('zero', '0', 'transaction zero', '0');
-
--- INSERT INTO transactions(type, amount, description) 
---   VALUES ('input', '55.23', 'grasa');
-
--- INSERT INTO transactions(type, amount, description) 
---   VALUES ('output', '23.00', 'bornes');

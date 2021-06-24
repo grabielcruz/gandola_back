@@ -11,14 +11,6 @@ import (
 	"github.com/julienschmidt/httprouter"
 )
 
-type Transaction struct {
-	Id          int
-	Type        string
-	Amount      float32
-	Description string
-	Executed    string
-}
-
 type TransactionWithBalance struct {
 	Id          int
 	Type        string
@@ -49,32 +41,57 @@ func GetTransactions(w http.ResponseWriter, r *http.Request, _ httprouter.Params
 	rows, err := db.Query("SELECT * FROM transactions_with_balances ORDER BY id ASC;")
 	if err != nil {
 		log.Fatal(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 	defer rows.Close()
 	for rows.Next() {
 		transaction := TransactionWithBalance{}
 		if err := rows.Scan(&transaction.Id, &transaction.Type, &transaction.Amount, &transaction.Description, &transaction.Balance, &transaction.Executed); err != nil {
 			log.Fatal(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
 		}
 		transactions = append(transactions, transaction)
 	}
 	json_transactions, err := json.Marshal(transactions)
 	if err != nil {
 		log.Fatal(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(json_transactions)
 }
 
 func CreateTransaction(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	transaction := Transaction{}
+	transaction := TransactionWithBalance{}
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintf(w, "No se pudo leer el cuerpo de la petición")
+		return
 	}
 	err = json.Unmarshal(body, &transaction)
 	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintf(w, "La data enviada no corresponde con una transacción")
+		return
+	}	
+	if (transaction.Type == "") {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(w, "Debe especificar el tipo de transacción")
+		return
+	}
+	if (transaction.Amount <= 0) {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(w, "El monto de la transacción debe ser mayor a cero")
+		return
+	}
+	if (transaction.Description == "") {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(w, "La transacción debe poseer una descripción")
+		return
 	}
 
 	db := database.ConnectDB()
@@ -86,28 +103,24 @@ func CreateTransaction(w http.ResponseWriter, r *http.Request, _ httprouter.Para
 	lastTransactionRow, err := db.Query(getLastBalanceQuery)
 	if err != nil {
 		log.Fatal(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 	defer lastTransactionRow.Close()
 	for lastTransactionRow.Next() {
 		if err := lastTransactionRow.Scan(&lastBalance); err != nil {
 			log.Fatal(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
 		}
 	}
 	if transaction.Type == "input" {
 		newBalance = lastBalance + transaction.Amount
 	} else if transaction.Type == "output" {
 		newBalance = lastBalance - transaction.Amount
-		if (newBalance < 0) {
-			response_data := Response{
-				Message: "No se puede ejecutar esta transacción porque su balance no puede bajar de cero (0)",
-				Payload: transaction,
-			}
-			response, err := json.Marshal(response_data)
-			if err != nil {
-				log.Fatal(err)
-			}
-			w.Header().Set("Content-Type", "application/json")
-			w.Write(response)
+		if newBalance < 0 {
+			w.WriteHeader(http.StatusBadRequest)
+			fmt.Fprintf(w, "Su transacción no pudo ser ejecutada porque genera un balance menor a cero (0)")
 			return
 		}
 	}
@@ -118,20 +131,23 @@ func CreateTransaction(w http.ResponseWriter, r *http.Request, _ httprouter.Para
 	rows, err := db.Query(insertedTransactionQuery)
 	if err != nil {
 		log.Fatal(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 	defer rows.Close()
 	for rows.Next() {
 		if err := rows.Scan(&insertedTransaction.Id, &insertedTransaction.Type, &insertedTransaction.Amount, &insertedTransaction.Description, &insertedTransaction.Balance, &insertedTransaction.Executed); err != nil {
 			log.Fatal(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
 		}
 	}
-	response_data := Response{
-		Message: "Transacción creada existosamente",
-		Payload: insertedTransaction,
-	}
+	response_data := insertedTransaction
 	response, err := json.Marshal(response_data)
 	if err != nil {
 		log.Fatal(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(response)
@@ -142,11 +158,20 @@ func PatchTransaction(w http.ResponseWriter, r *http.Request, _ httprouter.Param
 	partialTransaction := PartialTransaction{}
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintf(w, "No se pudo leer el cuerpo de la petición")
+		return
 	}
 	err = json.Unmarshal(body, &partialTransaction)
 	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintf(w, "La data enviada no corresponde con una transacción parcial")
+		return
+	}
+	if (partialTransaction.Id == 1) {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(w, "No puede modificar la transacción cero")
+		return
 	}
 	query := fmt.Sprintf("UPDATE transactions_with_balances SET description='%v' WHERE id='%v' RETURNING id, type, amount, description, balance, executed;", partialTransaction.Description, partialTransaction.Id)
 
@@ -156,33 +181,24 @@ func PatchTransaction(w http.ResponseWriter, r *http.Request, _ httprouter.Param
 	rows, err := db.Query(query)
 	if err != nil {
 		log.Fatal(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 	defer rows.Close()
 	for rows.Next() {
 		if err := rows.Scan(&modifiedTransaction.Id, &modifiedTransaction.Type, &modifiedTransaction.Amount, &modifiedTransaction.Description, &modifiedTransaction.Balance, &modifiedTransaction.Executed); err != nil {
 			log.Fatal(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
 		}
 	}
 
 	if modifiedTransaction.Id == 0 {
-		response_data := Response{
-			Message: "La transacción con el id indicado no existe",
-			Payload: partialTransaction.Id,
-		}
-		response, err := json.Marshal(response_data)
-		if err != nil {
-			log.Fatal(err)
-		}
-		w.Header().Set("Content-Type", "application/json")
-		w.Write(response)
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(w, "La transacción con el id %v no existe", partialTransaction.Id)
 		return
 	}
-
-	response_data := Response{
-		Message: "Transacción modificada existosamente",
-		Payload: modifiedTransaction,
-	}
-	response, err := json.Marshal(response_data)
+	response, err := json.Marshal(modifiedTransaction)
 	if err != nil {
 		log.Fatal(err)
 	}
