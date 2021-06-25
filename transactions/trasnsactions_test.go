@@ -13,6 +13,10 @@ import (
 	"github.com/julienschmidt/httprouter"
 )
 
+type idResponse struct{
+	Id int
+}
+
 func TestIndex(t *testing.T) {
 	router := httprouter.New()
 	router.GET("/", Index)
@@ -347,9 +351,36 @@ func TestCreateTransactionWithBalanceLessThanZero(t *testing.T) {
 
 func TestPatchTransaction(t *testing.T) {
 	router := httprouter.New()
+	router.GET("/lasttransactionid", GetLastTransactionId)
+
+	var lastId idResponse
+
+	req, err := http.NewRequest("GET", "/lasttransactionid", nil)
+	if err != nil {
+		log.Fatal(err)
+		t.Error("Could not make a get request to /lasttransactionid")
+	}
+	rr := httptest.NewRecorder()
+	router.ServeHTTP(rr, req)
+
+	t.Log("testing OK request status code for getting last id")
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("status = %v, want %v", status, http.StatusOK)
+	}
+
+	body, err := ioutil.ReadAll(rr.Body)
+	if err != nil {
+		log.Fatal(err)
+		t.Error("Could not read body of response")
+	}
+	
+	err = json.Unmarshal(body, &lastId)
+	if (err != nil) {
+		t.Error("Could not read last id from response")
+	}
 	router.PATCH("/transactions", PatchTransaction)
 
-	id := 2
+	id := lastId.Id
 	description := "transaction patch testing"	
 	bodyString := fmt.Sprintf(`
 		{
@@ -358,12 +389,11 @@ func TestPatchTransaction(t *testing.T) {
 		}
 	`, id, description)
 	transactionBody := strings.NewReader(bodyString)
-	req, err := http.NewRequest("PATCH", "/transactions", transactionBody)
+	req, err = http.NewRequest("PATCH", "/transactions", transactionBody)
 	if err != nil {
 		log.Fatal(err)
 		t.Error("Could not make a post request to /transactions")
 	}
-	rr := httptest.NewRecorder()
 	router.ServeHTTP(rr, req)
 
 	t.Log("testing OK request status code")
@@ -373,7 +403,7 @@ func TestPatchTransaction(t *testing.T) {
 
 	t.Log("testing create transaction success")
 	transactionResponse := TransactionWithBalance{}
-	body, err := ioutil.ReadAll(rr.Body)
+	body, err = ioutil.ReadAll(rr.Body)
 	if err != nil {
 		log.Fatal(err)
 		t.Error("Could not read body of response")
