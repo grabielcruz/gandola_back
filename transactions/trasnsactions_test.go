@@ -344,3 +344,230 @@ func TestCreateTransactionWithBalanceLessThanZero(t *testing.T) {
 		t.Errorf("response = %v, want %v", string(body), errMessage)
 	}
 }
+
+func TestPatchTransaction(t *testing.T) {
+	router := httprouter.New()
+	router.PATCH("/transactions", PatchTransaction)
+
+	id := 2
+	description := "transaction patch testing"	
+	bodyString := fmt.Sprintf(`
+		{
+			"Id": %v,
+			"Description": "%v"
+		}
+	`, id, description)
+	transactionBody := strings.NewReader(bodyString)
+	req, err := http.NewRequest("PATCH", "/transactions", transactionBody)
+	if err != nil {
+		log.Fatal(err)
+		t.Error("Could not make a post request to /transactions")
+	}
+	rr := httptest.NewRecorder()
+	router.ServeHTTP(rr, req)
+
+	t.Log("testing OK request status code")
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("status = %v, want %v", status, http.StatusOK)
+	}
+
+	t.Log("testing create transaction success")
+	transactionResponse := TransactionWithBalance{}
+	body, err := ioutil.ReadAll(rr.Body)
+	if err != nil {
+		log.Fatal(err)
+		t.Error("Could not read body of response")
+	}
+	err = json.Unmarshal(body, &transactionResponse)
+	if err != nil {
+		t.Error("Reponse body does not contain a TransactionWithBalances type")
+	}
+
+	if (transactionResponse.Id != id) {
+		t.Errorf("transactionResponse.Id = %v, want %v", transactionResponse.Id, id)
+	}
+
+	if (transactionResponse.Description != description) {
+		t.Errorf("transactionResponse.Id = %v, want %v", transactionResponse.Description, description)
+	}
+}
+
+func TestPatchTransactionZero(t *testing.T) {
+	router := httprouter.New()
+	router.PATCH("/transactions", PatchTransaction)
+
+	id := 1
+	description := "transaction patch testing"	
+	bodyString := fmt.Sprintf(`
+		{
+			"Id": %v,
+			"Description": "%v"
+		}
+	`, id, description)
+	transactionBody := strings.NewReader(bodyString)
+	req, err := http.NewRequest("PATCH", "/transactions", transactionBody)
+	if err != nil {
+		log.Fatal(err)
+		t.Error("Could not make a post request to /transactions")
+	}
+	rr := httptest.NewRecorder()
+	router.ServeHTTP(rr, req)
+
+	t.Log("testing bad request status code")
+	if status := rr.Code; status != http.StatusBadRequest {
+		t.Errorf("status = %v, want %v", status, http.StatusBadRequest)
+	}
+
+	t.Log("testing attempt to modify transaction zero")
+	body, err := ioutil.ReadAll(rr.Body)
+	if err != nil {
+		log.Fatal(err)
+		t.Error("Could not read body of response")
+	}
+	expected := "No puede modificar la transacción cero"
+
+	if (string(body) != expected) {
+		t.Errorf("body = %v, want %v", body, expected)
+
+	}
+}
+
+func TestPatchTransactionBadJson(t *testing.T) {
+	router := httprouter.New()
+	router.PATCH("/transactions", PatchTransaction)
+
+	id := 1
+	description := "transaction patch testing"	
+	bodyString := fmt.Sprintf(`
+		{
+			"Id": %v,
+			"Description": "%v",
+		}
+	`, id, description)
+	transactionBody := strings.NewReader(bodyString)
+	req, err := http.NewRequest("PATCH", "/transactions", transactionBody)
+	if err != nil {
+		log.Fatal(err)
+		t.Error("Could not make a post request to /transactions")
+	}
+	rr := httptest.NewRecorder()
+	router.ServeHTTP(rr, req)
+
+	t.Log("testing bad request status code")
+	if status := rr.Code; status != http.StatusBadRequest {
+		t.Errorf("status = %v, want %v", status, http.StatusBadRequest)
+	}
+
+	t.Log("testing attempt to modify transaction zero")
+	body, err := ioutil.ReadAll(rr.Body)
+	if err != nil {
+		log.Fatal(err)
+		t.Error("Could not read body of response")
+	}
+	expected := "La data enviada no corresponde con una transacción parcial"
+
+	if (string(body) != expected) {
+		t.Errorf("body = %v, want %v", string(body), expected)
+
+	}
+}
+
+func TestPatchTransactionNonExistingId(t *testing.T) {
+	router := httprouter.New()
+	router.PATCH("/transactions", PatchTransaction)
+
+	id := 99999
+	description := "transaction patch testing"	
+	bodyString := fmt.Sprintf(`
+		{
+			"Id": %v,
+			"Description": "%v"
+		}
+	`, id, description)
+	transactionBody := strings.NewReader(bodyString)
+	req, err := http.NewRequest("PATCH", "/transactions", transactionBody)
+	if err != nil {
+		log.Fatal(err)
+		t.Error("Could not make a patch request to /transactions")
+	}
+	rr := httptest.NewRecorder()
+	router.ServeHTTP(rr, req)
+
+	t.Log("testing bad request status code")
+	if status := rr.Code; status != http.StatusBadRequest {
+		t.Errorf("status = %v, want %v", status, http.StatusBadRequest)
+	}
+
+	t.Log("testing attempt to modify an unexisting transaction")
+	body, err := ioutil.ReadAll(rr.Body)
+	if err != nil {
+		log.Fatal(err)
+		t.Error("Could not read body of response")
+	}
+	expected := fmt.Sprintf("La transacción con el id %v no existe", id)
+
+	if (string(body) != expected) {
+		t.Errorf("body = %v, want %v", string(body), expected)
+	}
+}
+
+func TestDeleteLastTransaction(t *testing.T) {
+	router := httprouter.New()
+	router.GET("/lasttransactionid", GetLastTransactionId)
+
+	type idResponse struct{
+		Id int
+	}
+	
+	var lastId idResponse
+	var deletedId idResponse
+
+	req, err := http.NewRequest("GET", "/lasttransactionid", nil)
+	if err != nil {
+		log.Fatal(err)
+		t.Error("Could not make a get request to /lasttransactionid")
+	}
+	rr := httptest.NewRecorder()
+	router.ServeHTTP(rr, req)
+
+	t.Log("testing OK request status code for getting last id")
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("status = %v, want %v", status, http.StatusOK)
+	}
+
+	body, err := ioutil.ReadAll(rr.Body)
+	if err != nil {
+		log.Fatal(err)
+		t.Error("Could not read body of response")
+	}
+	
+	err = json.Unmarshal(body, &lastId)
+	if (err != nil) {
+		t.Error("Could not read last id from response")
+	}
+
+	router.DELETE("/transactions", DeleteLastTransaction)
+	req, err = http.NewRequest("DELETE", "/transactions", nil)
+	if err != nil {
+		log.Fatal(err)
+		t.Error("Could not make a delete request to /transactions")
+	}
+	router.ServeHTTP(rr, req)
+	t.Log("testing OK request status code for deleting last id")
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("status = %v, want %v", status, http.StatusOK)
+	}
+	body, err = ioutil.ReadAll(rr.Body)
+	if err != nil {
+		log.Fatal(err)
+		t.Error("Could not read body of response")
+	}
+	err = json.Unmarshal(body, &deletedId)
+	if (err != nil) {
+		t.Error("Could not read deleted id from response")
+	}
+	t.Log("Testing last id equals deleted id")
+	if (lastId.Id != deletedId.Id) {
+		t.Errorf("deleted id = %v, want %v", deletedId.Id, lastId.Id)
+	}
+}

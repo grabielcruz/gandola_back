@@ -20,11 +20,6 @@ type TransactionWithBalance struct {
 	Balance     float32
 }
 
-type Response struct {
-	Message string
-	Payload interface{}
-}
-
 type PartialTransaction struct {
 	Id          int
 	Description string
@@ -64,6 +59,7 @@ func GetTransactions(w http.ResponseWriter, r *http.Request, _ httprouter.Params
 	w.Write(json_transactions)
 }
 
+// TODO: check sql injection issue
 func CreateTransaction(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	transaction := TransactionWithBalance{}
 	body, err := ioutil.ReadAll(r.Body)
@@ -153,7 +149,6 @@ func CreateTransaction(w http.ResponseWriter, r *http.Request, _ httprouter.Para
 	w.Write(response)
 }
 
-// TODO: forbid modification of transaction zero
 func PatchTransaction(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	partialTransaction := PartialTransaction{}
 	body, err := ioutil.ReadAll(r.Body)
@@ -201,6 +196,8 @@ func PatchTransaction(w http.ResponseWriter, r *http.Request, _ httprouter.Param
 	response, err := json.Marshal(modifiedTransaction)
 	if err != nil {
 		log.Fatal(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(response)
@@ -214,36 +211,55 @@ func DeleteLastTransaction(w http.ResponseWriter, r *http.Request, _ httprouter.
 	rows, err := db.Query(query)
 	if err != nil {
 		log.Fatal(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 	defer rows.Close()
 	for rows.Next() {
 		if err := rows.Scan(&deletedTransactionId); err != nil {
 			log.Fatal(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
 		}
 	}
 
 	if deletedTransactionId == -1 {
-		response_data := Response{
-			Message: "No quedan más transacciones por eliminar por lo que no se pudo eliminar ninguna transacción",
-			Payload: deletedTransactionId,
-		}
-		response, err := json.Marshal(response_data)
-		if err != nil {
-			log.Fatal(err)
-		}
-		w.Header().Set("Content-Type", "application/json")
-		w.Write(response)
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(w, "No quedan más transacciones por eliminar")
 		return
 	}
 
-	response_data := Response{
-		Message: "Transacción eliminada exitosamente",
-		Payload: deletedTransactionId,
-	}
-	response, err := json.Marshal(response_data)
+	w.Header().Set("Content-Type", "application/json")
+	fmt.Fprintf(w,`{"Id": %v}`, deletedTransactionId)
+}
+
+
+func GetLastTransactionId(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	lastTransactionId := -1
+	db := database.ConnectDB()
+	defer db.Close()
+	query := "SELECT id FROM transactions_with_balances ORDER BY id desc LIMIT 1;"
+	rows, err := db.Query(query)
 	if err != nil {
 		log.Fatal(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
+	defer rows.Close()
+	for rows.Next() {
+		if err := rows.Scan(&lastTransactionId); err != nil {
+			log.Fatal(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+	}
+
+	if lastTransactionId == -1 {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(w, "No existen más transacciones")
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json")
-	w.Write(response)
+	fmt.Fprintf(w,`{"Id": %v}`, lastTransactionId)
 }

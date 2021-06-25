@@ -17,6 +17,7 @@ func main() {
 	router.POST("/transactions", transactions.CreateTransaction)
 	router.PATCH("/transactions", transactions.PatchTransaction)
 	router.DELETE("/transactions", transactions.DeleteLastTransaction) //Delete only the last transaction
+	router.GET("/lasttransactionid", transactions.GetLastTransactionId) 
 
 	log.Fatal(http.ListenAndServe(":8080", router))
 }
