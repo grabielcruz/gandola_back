@@ -537,14 +537,11 @@ func TestPatchTransactionNonExistingId(t *testing.T) {
 	}
 }
 
+var lastIdBeforeDeletion IdResponse
 func TestDeleteLastTransaction(t *testing.T) {
 	router := httprouter.New()
 	router.GET("/lasttransactionid", GetLastTransactionId)
 
-	type IdResponse struct{
-		Id int
-	}
-	
 	var lastId IdResponse
 	var deletedId IdResponse
 
@@ -592,8 +589,46 @@ func TestDeleteLastTransaction(t *testing.T) {
 	if (err != nil) {
 		t.Error("Could not read deleted id from response")
 	}
+	lastIdBeforeDeletion.Id = deletedId.Id
 	t.Log("Testing last id equals deleted id")
 	if (lastId.Id != deletedId.Id) {
 		t.Errorf("deleted id = %v, want %v", deletedId.Id, lastId.Id)
+	}
+}
+
+func TestRollbackIdOnDelete(t *testing.T) {
+	router := httprouter.New()
+	router.GET("/lasttransactionid", GetLastTransactionId)
+
+	var lastId IdResponse
+
+	req, err := http.NewRequest("GET", "/lasttransactionid", nil)
+	if err != nil {
+		log.Fatal(err)
+		t.Error("Could not make a get request to /lasttransactionid")
+	}
+	rr := httptest.NewRecorder()
+	router.ServeHTTP(rr, req)
+
+	t.Log("testing OK request status code for getting last id")
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("status = %v, want %v", status, http.StatusOK)
+	}
+
+	body, err := ioutil.ReadAll(rr.Body)
+	if err != nil {
+		log.Fatal(err)
+		t.Error("Could not read body of response")
+	}
+	
+	err = json.Unmarshal(body, &lastId)
+	if (err != nil) {
+		t.Error("Could not read last id from response")
+	}
+	wantedId := lastIdBeforeDeletion.Id - 1 // because we deleted one transaction
+
+	t.Log("testing if last id rolledb back on deletion")
+	if (lastId.Id != wantedId) {
+		t.Errorf("last id = %v, want %v", lastId.Id, wantedId)
 	}
 }
