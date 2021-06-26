@@ -25,6 +25,9 @@ type PartialTransaction struct {
 	Description string
 }
 
+type IdResponse struct{
+	Id int
+}
 
 func Index(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	fmt.Fprintf(w, "Server working")
@@ -205,7 +208,9 @@ func PatchTransaction(w http.ResponseWriter, r *http.Request, _ httprouter.Param
 }
 
 func DeleteLastTransaction(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	deletedTransactionId := -1
+	deletedTransactionId := IdResponse{
+		Id: -1,
+	}
 	db := database.ConnectDB()
 	defer db.Close()
 	query := "DELETE FROM transactions_with_balances WHERE id != 1 AND id in (SELECT id FROM transactions_with_balances ORDER BY id desc LIMIT 1) RETURNING id;"
@@ -217,26 +222,42 @@ func DeleteLastTransaction(w http.ResponseWriter, r *http.Request, _ httprouter.
 	}
 	defer rows.Close()
 	for rows.Next() {
-		if err := rows.Scan(&deletedTransactionId); err != nil {
+		if err := rows.Scan(&deletedTransactionId.Id); err != nil {
 			log.Fatal(err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 	}
 
-	if deletedTransactionId == -1 {
+	rollBackIdQuery := "SELECT setval('transactions_with_balances_id_seq', (SELECT last_value from transactions_with_balances_id_seq) - 1);"
+	_, err = db.Query(rollBackIdQuery)
+	if err != nil {
+		log.Fatal(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	if deletedTransactionId.Id == -1 {
 		w.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintf(w, "No quedan más transacciones por eliminar")
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	fmt.Fprintf(w,`{"Id": %v}`, deletedTransactionId)
+	response, err := json.Marshal(deletedTransactionId)
+	if (err != nil) {
+		log.Fatal(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.Write(response)
 }
 
 
 func GetLastTransactionId(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	lastTransactionId := -1
+	lastTransactionId := IdResponse{
+		Id: -1,
+	}
 	db := database.ConnectDB()
 	defer db.Close()
 	query := "SELECT id FROM transactions_with_balances ORDER BY id desc LIMIT 1;"
@@ -248,19 +269,25 @@ func GetLastTransactionId(w http.ResponseWriter, r *http.Request, _ httprouter.P
 	}
 	defer rows.Close()
 	for rows.Next() {
-		if err := rows.Scan(&lastTransactionId); err != nil {
+		if err := rows.Scan(&lastTransactionId.Id); err != nil {
 			log.Fatal(err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 	}
 
-	if lastTransactionId == -1 {
+	if lastTransactionId.Id == -1 {
 		w.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintf(w, "No existen más transacciones")
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	fmt.Fprintf(w,`{"Id": %v}`, lastTransactionId)
+	response, err := json.Marshal(lastTransactionId)
+	if (err != nil) {
+		log.Fatal(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.Write(response)
 }

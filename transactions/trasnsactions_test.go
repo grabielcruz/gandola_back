@@ -13,10 +13,6 @@ import (
 	"github.com/julienschmidt/httprouter"
 )
 
-type idResponse struct{
-	Id int
-}
-
 func TestIndex(t *testing.T) {
 	router := httprouter.New()
 	router.GET("/", Index)
@@ -353,7 +349,7 @@ func TestPatchTransaction(t *testing.T) {
 	router := httprouter.New()
 	router.GET("/lasttransactionid", GetLastTransactionId)
 
-	var lastId idResponse
+	var lastId IdResponse
 
 	req, err := http.NewRequest("GET", "/lasttransactionid", nil)
 	if err != nil {
@@ -545,12 +541,12 @@ func TestDeleteLastTransaction(t *testing.T) {
 	router := httprouter.New()
 	router.GET("/lasttransactionid", GetLastTransactionId)
 
-	type idResponse struct{
+	type IdResponse struct{
 		Id int
 	}
 	
-	var lastId idResponse
-	var deletedId idResponse
+	var lastId IdResponse
+	var deletedId IdResponse
 
 	req, err := http.NewRequest("GET", "/lasttransactionid", nil)
 	if err != nil {
