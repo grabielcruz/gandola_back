@@ -16,8 +16,9 @@ type TransactionWithBalance struct {
 	Type        string
 	Amount      float32
 	Description string
-	Executed    string
 	Balance     float32
+	Executed    string
+	CreatedAt		string
 }
 
 type PartialTransaction struct {
@@ -46,7 +47,7 @@ func GetTransactions(w http.ResponseWriter, r *http.Request, _ httprouter.Params
 	defer rows.Close()
 	for rows.Next() {
 		transaction := TransactionWithBalance{}
-		if err := rows.Scan(&transaction.Id, &transaction.Type, &transaction.Amount, &transaction.Description, &transaction.Balance, &transaction.Executed); err != nil {
+		if err := rows.Scan(&transaction.Id, &transaction.Type, &transaction.Amount, &transaction.Description, &transaction.Balance, &transaction.Executed, &transaction.CreatedAt); err != nil {
 			log.Fatal(err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
@@ -126,7 +127,7 @@ func CreateTransaction(w http.ResponseWriter, r *http.Request, _ httprouter.Para
 	}
 
 	insertedTransaction := TransactionWithBalance{}
-	insertedTransactionQuery := fmt.Sprintf("INSERT INTO transactions_with_balances(type, amount, description, balance) VALUES ('%v', '%v', '%v', '%v') RETURNING id, type, amount, description, balance, executed;", transaction.Type, transaction.Amount, transaction.Description, newBalance)
+	insertedTransactionQuery := fmt.Sprintf("INSERT INTO transactions_with_balances(type, amount, description, balance) VALUES ('%v', '%v', '%v', '%v') RETURNING id, type, amount, description, balance, executed, created_at;", transaction.Type, transaction.Amount, transaction.Description, newBalance)
 
 	rows, err := db.Query(insertedTransactionQuery)
 	if err != nil {
@@ -136,7 +137,7 @@ func CreateTransaction(w http.ResponseWriter, r *http.Request, _ httprouter.Para
 	}
 	defer rows.Close()
 	for rows.Next() {
-		if err := rows.Scan(&insertedTransaction.Id, &insertedTransaction.Type, &insertedTransaction.Amount, &insertedTransaction.Description, &insertedTransaction.Balance, &insertedTransaction.Executed); err != nil {
+		if err := rows.Scan(&insertedTransaction.Id, &insertedTransaction.Type, &insertedTransaction.Amount, &insertedTransaction.Description, &insertedTransaction.Balance, &insertedTransaction.Executed, &insertedTransaction.CreatedAt); err != nil {
 			log.Fatal(err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
@@ -172,7 +173,7 @@ func PatchTransaction(w http.ResponseWriter, r *http.Request, _ httprouter.Param
 		fmt.Fprintf(w, "No puede modificar la transacción cero")
 		return
 	}
-	query := fmt.Sprintf("UPDATE transactions_with_balances SET description='%v' WHERE id='%v' RETURNING id, type, amount, description, balance, executed;", partialTransaction.Description, partialTransaction.Id)
+	query := fmt.Sprintf("UPDATE transactions_with_balances SET description='%v' WHERE id='%v' RETURNING id, type, amount, description, balance, executed, created_at;", partialTransaction.Description, partialTransaction.Id)
 
 	modifiedTransaction := TransactionWithBalance{}
 	db := database.ConnectDB()
@@ -185,7 +186,7 @@ func PatchTransaction(w http.ResponseWriter, r *http.Request, _ httprouter.Param
 	}
 	defer rows.Close()
 	for rows.Next() {
-		if err := rows.Scan(&modifiedTransaction.Id, &modifiedTransaction.Type, &modifiedTransaction.Amount, &modifiedTransaction.Description, &modifiedTransaction.Balance, &modifiedTransaction.Executed); err != nil {
+		if err := rows.Scan(&modifiedTransaction.Id, &modifiedTransaction.Type, &modifiedTransaction.Amount, &modifiedTransaction.Description, &modifiedTransaction.Balance, &modifiedTransaction.Executed, &modifiedTransaction.CreatedAt); err != nil {
 			log.Fatal(err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
