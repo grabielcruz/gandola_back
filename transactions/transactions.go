@@ -11,25 +11,14 @@ import (
 	"github.com/julienschmidt/httprouter"
 )
 
-type Balance struct {
-	Id int
-	Balance	float32
-	CreatedAt	string
-	PrevTransactionId int
-}
-
-type Transaction struct {
+type TransactionWithBalance struct {
 	Id          int
 	Type        string
 	Amount      float32
 	Description string
+	Balance     float32
 	Executed    string
-	PrevBalanceId int
-}
-
-type Response struct {
-	Message string
-	Payload interface{}
+	CreatedAt		string
 }
 
 type PartialTransaction struct {
@@ -37,96 +26,129 @@ type PartialTransaction struct {
 	Description string
 }
 
+type IdResponse struct{
+	Id int
+}
+
 func Index(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	fmt.Fprintf(w, "Server working")
 }
 
 func GetTransactions(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	transactions := []Transaction{}
+	transactions := []TransactionWithBalance{}
 	db := database.ConnectDB()
 	defer db.Close()
-	rows, err := db.Query("SELECT * FROM transactions ORDER BY id ASC;")
+	rows, err := db.Query("SELECT * FROM transactions_with_balances ORDER BY id ASC;")
 	if err != nil {
 		log.Fatal(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 	defer rows.Close()
 	for rows.Next() {
-		transaction := Transaction{}
-		if err := rows.Scan(&transaction.Id, &transaction.Type, &transaction.Amount, &transaction.Description, &transaction.Executed, &transaction.PrevBalanceId); err != nil {
+		transaction := TransactionWithBalance{}
+		if err := rows.Scan(&transaction.Id, &transaction.Type, &transaction.Amount, &transaction.Description, &transaction.Balance, &transaction.Executed, &transaction.CreatedAt); err != nil {
 			log.Fatal(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
 		}
 		transactions = append(transactions, transaction)
 	}
 	json_transactions, err := json.Marshal(transactions)
 	if err != nil {
 		log.Fatal(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(json_transactions)
 }
 
+// TODO: check sql injection issue
 func CreateTransaction(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	transaction := Transaction{}
+	transaction := TransactionWithBalance{}
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintf(w, "No se pudo leer el cuerpo de la petición")
+		return
 	}
 	err = json.Unmarshal(body, &transaction)
 	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintf(w, "La data enviada no corresponde con una transacción")
+		return
+	}	
+	if (transaction.Type == "") {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(w, "Debe especificar el tipo de transacción")
+		return
 	}
-	
+	if (transaction.Amount <= 0) {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(w, "El monto de la transacción debe ser mayor a cero")
+		return
+	}
+	if (transaction.Description == "") {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(w, "La transacción debe poseer una descripción")
+		return
+	}
+
 	db := database.ConnectDB()
 	defer db.Close()
 
-	prevBalance := Balance{}
-	getBalancesQuery := "SELECT * FROM balances ORDER BY id desc LIMIT 1"
-	balanceRows, err := db.Query(getBalancesQuery)
+	var lastBalance float32
+	var newBalance float32
+	getLastBalanceQuery := "SELECT balance FROM transactions_with_balances ORDER BY id desc LIMIT 1"
+	lastTransactionRow, err := db.Query(getLastBalanceQuery)
 	if err != nil {
 		log.Fatal(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
-	defer balanceRows.Close()
-	for balanceRows.Next() {
-		if err := balanceRows.Scan(&prevBalance.Id, &prevBalance.Balance, &prevBalance.CreatedAt, &prevBalance.PrevTransactionId); err != nil {
+	defer lastTransactionRow.Close()
+	for lastTransactionRow.Next() {
+		if err := lastTransactionRow.Scan(&lastBalance); err != nil {
 			log.Fatal(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
 		}
 	}
-	fmt.Println(prevBalance)
-
-	insertedTransaction := Transaction{}
-	insertTransactionQuery := fmt.Sprintf("INSERT INTO transactions(type, amount, description, prev_balance) VALUES ('%v', '%v', '%v', '%v') RETURNING id, type, amount, description, executed, prev_balance;", transaction.Type, transaction.Amount, transaction.Description, prevBalance.Id)
-	transactionRows, err := db.Query(insertTransactionQuery)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer transactionRows.Close()
-	for transactionRows.Next() {
-		if err := transactionRows.Scan(&insertedTransaction.Id, &insertedTransaction.Type, &insertedTransaction.Amount, &insertedTransaction.Description, &insertedTransaction.Executed, &insertedTransaction.PrevBalanceId); err != nil {
-			log.Fatal(err)
+	if transaction.Type == "input" {
+		newBalance = lastBalance + transaction.Amount
+	} else if transaction.Type == "output" {
+		newBalance = lastBalance - transaction.Amount
+		if newBalance < 0 {
+			w.WriteHeader(http.StatusBadRequest)
+			fmt.Fprintf(w, "Su transacción no pudo ser ejecutada porque genera un balance menor a cero (0)")
+			return
 		}
 	}
 
-	var newBalanceAmount float32
-	if (insertedTransaction.Type == "input") {
-		newBalanceAmount = prevBalance.Balance + insertedTransaction.Amount
-	} else if (insertedTransaction.Type == "output") {
-		//TODO: check for negative balances
-		newBalanceAmount = prevBalance.Balance - insertedTransaction.Amount
-	}
+	insertedTransaction := TransactionWithBalance{}
+	insertedTransactionQuery := fmt.Sprintf("INSERT INTO transactions_with_balances(type, amount, description, balance) VALUES ('%v', '%v', '%v', '%v') RETURNING id, type, amount, description, balance, executed, created_at;", transaction.Type, transaction.Amount, transaction.Description, newBalance)
 
-	insertBalanceQuery := fmt.Sprintf("INSERT INTO balances (balance, prev_transaction) VALUES ('%v', '%v');", newBalanceAmount, insertedTransaction.Id)
-	_, err = db.Query(insertBalanceQuery)
+	rows, err := db.Query(insertedTransactionQuery)
 	if err != nil {
 		log.Fatal(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
-
-	response_data := Response{
-		Message: "Transacción creada existosamente",
-		Payload: insertedTransaction,
+	defer rows.Close()
+	for rows.Next() {
+		if err := rows.Scan(&insertedTransaction.Id, &insertedTransaction.Type, &insertedTransaction.Amount, &insertedTransaction.Description, &insertedTransaction.Balance, &insertedTransaction.Executed, &insertedTransaction.CreatedAt); err != nil {
+			log.Fatal(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 	}
+	response_data := insertedTransaction
 	response, err := json.Marshal(response_data)
 	if err != nil {
 		log.Fatal(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(response)
@@ -136,92 +158,137 @@ func PatchTransaction(w http.ResponseWriter, r *http.Request, _ httprouter.Param
 	partialTransaction := PartialTransaction{}
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintf(w, "No se pudo leer el cuerpo de la petición")
+		return
 	}
 	err = json.Unmarshal(body, &partialTransaction)
 	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintf(w, "La data enviada no corresponde con una transacción parcial")
+		return
 	}
-	query := fmt.Sprintf("UPDATE transactions SET description='%v' WHERE id='%v' RETURNING id, type, amount, description, executed;", partialTransaction.Description, partialTransaction.Id)
+	if (partialTransaction.Id == 1) {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(w, "No puede modificar la transacción cero")
+		return
+	}
+	query := fmt.Sprintf("UPDATE transactions_with_balances SET description='%v' WHERE id='%v' RETURNING id, type, amount, description, balance, executed, created_at;", partialTransaction.Description, partialTransaction.Id)
 
-	modifiedTransaction := Transaction{}
+	modifiedTransaction := TransactionWithBalance{}
 	db := database.ConnectDB()
 	defer db.Close()
 	rows, err := db.Query(query)
 	if err != nil {
 		log.Fatal(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 	defer rows.Close()
 	for rows.Next() {
-		if err := rows.Scan(&modifiedTransaction.Id, &modifiedTransaction.Type, &modifiedTransaction.Amount, &modifiedTransaction.Description, &modifiedTransaction.Executed); err != nil {
+		if err := rows.Scan(&modifiedTransaction.Id, &modifiedTransaction.Type, &modifiedTransaction.Amount, &modifiedTransaction.Description, &modifiedTransaction.Balance, &modifiedTransaction.Executed, &modifiedTransaction.CreatedAt); err != nil {
 			log.Fatal(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
 		}
 	}
 
 	if modifiedTransaction.Id == 0 {
-		response_data := Response{
-			Message: "La transacción con el id indicado no existe",
-			Payload: partialTransaction.Id,
-		}
-		response, err := json.Marshal(response_data)
-		if err != nil {
-			log.Fatal(err)
-		}
-		w.Header().Set("Content-Type", "application/json")
-		w.Write(response)
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(w, "La transacción con el id %v no existe", partialTransaction.Id)
 		return
 	}
-
-	response_data := Response{
-		Message: "Transacción modificada existosamente",
-		Payload: modifiedTransaction,
-	}
-	response, err := json.Marshal(response_data)
+	response, err := json.Marshal(modifiedTransaction)
 	if err != nil {
 		log.Fatal(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(response)
 }
 
 func DeleteLastTransaction(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	deletedTransactionId := -1
+	deletedTransactionId := IdResponse{
+		Id: -1,
+	}
 	db := database.ConnectDB()
 	defer db.Close()
-	query := "DELETE FROM transactions WHERE id in (SELECT id FROM transactions ORDER BY id desc LIMIT 1) RETURNING id;"
+	query := "DELETE FROM transactions_with_balances WHERE id != 1 AND id in (SELECT id FROM transactions_with_balances ORDER BY id desc LIMIT 1) RETURNING id;"
 	rows, err := db.Query(query)
 	if err != nil {
 		log.Fatal(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 	defer rows.Close()
 	for rows.Next() {
-		if err := rows.Scan(&deletedTransactionId); err != nil {
+		if err := rows.Scan(&deletedTransactionId.Id); err != nil {
 			log.Fatal(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
 		}
 	}
 
-	if deletedTransactionId == -1 {
-		response_data := Response{
-			Message: "No quedan más transacciones por eliminar por lo que no se pudo eliminar ninguna transacción",
-			Payload: deletedTransactionId,
-		}
-		response, err := json.Marshal(response_data)
-		if err != nil {
-			log.Fatal(err)
-		}
-		w.Header().Set("Content-Type", "application/json")
-		w.Write(response)
+	rollBackIdQuery := "SELECT setval('transactions_with_balances_id_seq', (SELECT last_value from transactions_with_balances_id_seq) - 1);"
+	_, err = db.Query(rollBackIdQuery)
+	if err != nil {
+		log.Fatal(err)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	response_data := Response{
-		Message: "Transacción eliminada exitosamente",
-		Payload: deletedTransactionId,
+	if deletedTransactionId.Id == -1 {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(w, "No quedan más transacciones por eliminar")
+		return
 	}
-	response, err := json.Marshal(response_data)
+
+	w.Header().Set("Content-Type", "application/json")
+	response, err := json.Marshal(deletedTransactionId)
+	if (err != nil) {
+		log.Fatal(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.Write(response)
+}
+
+
+func GetLastTransactionId(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	lastTransactionId := IdResponse{
+		Id: -1,
+	}
+	db := database.ConnectDB()
+	defer db.Close()
+	query := "SELECT id FROM transactions_with_balances ORDER BY id desc LIMIT 1;"
+	rows, err := db.Query(query)
 	if err != nil {
 		log.Fatal(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
+	defer rows.Close()
+	for rows.Next() {
+		if err := rows.Scan(&lastTransactionId.Id); err != nil {
+			log.Fatal(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+	}
+
+	if lastTransactionId.Id == -1 {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(w, "No existen más transacciones")
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json")
+	response, err := json.Marshal(lastTransactionId)
+	if (err != nil) {
+		log.Fatal(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 	w.Write(response)
 }
