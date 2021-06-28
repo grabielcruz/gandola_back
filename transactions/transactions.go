@@ -177,6 +177,11 @@ func PatchTransaction(w http.ResponseWriter, r *http.Request, _ httprouter.Param
 		fmt.Fprintf(w, "No puede modificar la transacción cero")
 		return
 	}
+	if (partialTransaction.Description == "") {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(w, "La transacción debe poseer una descripión")
+		return
+	}
 	query := fmt.Sprintf("UPDATE transactions_with_balances SET description='%v' WHERE id='%v' RETURNING id, type, amount, description, balance, executed, created_at;", partialTransaction.Description, partialTransaction.Id)
 
 	modifiedTransaction := TransactionWithBalance{}
