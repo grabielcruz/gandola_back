@@ -26,6 +26,10 @@ type PartialPendingTransaction struct {
 	Description string
 }
 
+type IdResponse struct {
+	Id int
+}
+
 func GetPendingTransactions(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	transactions := []PendingTransaction{}
 	db := database.ConnectDB()
@@ -184,5 +188,47 @@ func PatchPendingTransaction(w http.ResponseWriter, r *http.Request, _ httproute
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
+	w.Write(response)
+}
+
+func DeletePendingTransaction(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	requesteId := ps.ByName("id")
+	if requesteId == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(w, "Debe especificar el parametro id en la petición de borrado")
+		return
+	}
+	db := database.ConnectDB()
+	defer db.Close()
+	query := fmt.Sprintf("DELETE FROM pending_transactions WHERE id='%v' RETURNING id;", requesteId)
+	rows, err := db.Query(query)
+	if err != nil {
+		log.Fatal(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+	deletedId := IdResponse{}
+	for rows.Next() {
+		err = rows.Scan(&deletedId.Id)
+		if err != nil {
+			log.Fatal(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+	}
+
+	if deletedId.Id == 0 {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(w, "La transacción pendiente con el id %v no existe", requesteId)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	response, err := json.Marshal(deletedId)
+	if err != nil {
+		log.Fatal(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 	w.Write(response)
 }

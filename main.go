@@ -23,6 +23,7 @@ func main() {
 	router.GET("/pending_transactions", pending_transactions.GetPendingTransactions)
 	router.POST("/pending_transactions", pending_transactions.CreatePendingTransaction)
 	router.PATCH("/pending_transactions", pending_transactions.PatchPendingTransaction)
+	router.DELETE("/pending_transactions/:id", pending_transactions.DeletePendingTransaction)
 
 	log.Fatal(http.ListenAndServe(":8080", router))
 }
