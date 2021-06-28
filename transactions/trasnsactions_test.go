@@ -116,12 +116,10 @@ func TestCreateTransaction(t *testing.T) {
 	rr := httptest.NewRecorder()
 	router.ServeHTTP(rr, req)
 
-
 	t.Log("testing successful status code")
 	if status := rr.Code; status != http.StatusOK {
 		t.Errorf("status = %v, want %v", status, http.StatusOK)
 	}
-
 
 	t.Log("testing create transaction success")
 	transactionResponse := TransactionWithBalance{}
@@ -134,13 +132,13 @@ func TestCreateTransaction(t *testing.T) {
 	if err != nil {
 		t.Error("Reponse body does not contain a TransactionWithBalances type")
 	}
-	if (transactionResponse.Type != "input") {
+	if transactionResponse.Type != "input" {
 		t.Errorf("transactionResponse.Type = %v, want %v", transactionResponse.Type, transactionType)
 	}
-	if (transactionResponse.Amount != 3) {
+	if transactionResponse.Amount != 3 {
 		t.Errorf("transactionResponse.Amount = %v, want %v", transactionResponse.Amount, transactionAmount)
 	}
-	if (transactionResponse.Description != "abc") {
+	if transactionResponse.Description != "abc" {
 		t.Errorf("transactionResponse.Description = %v, want %v", transactionResponse.Description, transactionDescription)
 	}
 }
@@ -180,7 +178,7 @@ func TestCreateTransactionWithoutType(t *testing.T) {
 		t.Error("Could not read body of response")
 	}
 	errMessage := "Debe especificar el tipo de transacción"
-	if (string(body) != errMessage) {
+	if string(body) != errMessage {
 		t.Errorf("response = %v, want %v", string(body), errMessage)
 	}
 }
@@ -220,7 +218,7 @@ func TestCreateTransactionWithoutWrongType(t *testing.T) {
 		t.Error("Could not read body of response")
 	}
 	errMessage := "El tipo de transacción solo puede ser del tipo 'input' o 'output'"
-	if (string(body) != errMessage) {
+	if string(body) != errMessage {
 		t.Errorf("response = %v, want %v", string(body), errMessage)
 	}
 }
@@ -260,7 +258,7 @@ func TestCreateTransactionWithoutAmount(t *testing.T) {
 		t.Error("Could not read body of response")
 	}
 	errMessage := "El monto de la transacción debe ser mayor a cero"
-	if (string(body) != errMessage) {
+	if string(body) != errMessage {
 		t.Errorf("response = %v, want %v", string(body), errMessage)
 	}
 }
@@ -300,7 +298,7 @@ func TestCreateTransactionWithoutDescription(t *testing.T) {
 		t.Error("Could not read body of response")
 	}
 	errMessage := "La transacción debe poseer una descripción"
-	if (string(body) != errMessage) {
+	if string(body) != errMessage {
 		t.Errorf("response = %v, want %v", string(body), errMessage)
 	}
 }
@@ -340,7 +338,7 @@ func TestCreateTransactionWithBadJson(t *testing.T) {
 		t.Error("Could not read body of response")
 	}
 	errMessage := "La data recibida no corresponde con una transacción"
-	if (string(body) != errMessage) {
+	if string(body) != errMessage {
 		t.Errorf("response = %v, want %v", string(body), errMessage)
 	}
 }
@@ -380,7 +378,7 @@ func TestCreateTransactionWithBalanceLessThanZero(t *testing.T) {
 		t.Error("Could not read body of response")
 	}
 	errMessage := "Su transacción no pudo ser ejecutada porque genera un balance menor a cero (0)"
-	if (string(body) != errMessage) {
+	if string(body) != errMessage {
 		t.Errorf("response = %v, want %v", string(body), errMessage)
 	}
 }
@@ -409,15 +407,15 @@ func TestPatchTransaction(t *testing.T) {
 		log.Fatal(err)
 		t.Error("Could not read body of response")
 	}
-	
+
 	err = json.Unmarshal(body, &lastId)
-	if (err != nil) {
+	if err != nil {
 		t.Error("Could not read last id from response")
 	}
 	router.PATCH("/transactions", PatchTransaction)
 
 	id := lastId.Id
-	description := "transaction patch testing"	
+	description := "transaction patch testing"
 	bodyString := fmt.Sprintf(`
 		{
 			"Id": %v,
@@ -449,11 +447,11 @@ func TestPatchTransaction(t *testing.T) {
 		t.Error("Reponse body does not contain a TransactionWithBalances type")
 	}
 
-	if (transactionResponse.Id != id) {
+	if transactionResponse.Id != id {
 		t.Errorf("transactionResponse.Id = %v, want %v", transactionResponse.Id, id)
 	}
 
-	if (transactionResponse.Description != description) {
+	if transactionResponse.Description != description {
 		t.Errorf("transactionResponse.Id = %v, want %v", transactionResponse.Description, description)
 	}
 }
@@ -482,9 +480,9 @@ func TestPatchTransactionEmptyDescription(t *testing.T) {
 		log.Fatal(err)
 		t.Error("Could not read body of response")
 	}
-	
+
 	err = json.Unmarshal(body, &lastId)
-	if (err != nil) {
+	if err != nil {
 		t.Error("Could not read last id from response")
 	}
 	router.PATCH("/transactions", PatchTransaction)
@@ -520,7 +518,7 @@ func TestPatchTransactionEmptyDescription(t *testing.T) {
 	}
 	expected := "La transacción debe poseer una descripión"
 
-	if (string(body) != expected) {
+	if string(body) != expected {
 		t.Errorf("body = %v, want %v", string(body), expected)
 	}
 }
@@ -530,7 +528,7 @@ func TestPatchTransactionZero(t *testing.T) {
 	router.PATCH("/transactions", PatchTransaction)
 
 	id := 1
-	description := "transaction patch testing"	
+	description := "transaction patch testing"
 	bodyString := fmt.Sprintf(`
 		{
 			"Id": %v,
@@ -559,8 +557,8 @@ func TestPatchTransactionZero(t *testing.T) {
 	}
 	expected := "No puede modificar la transacción cero"
 
-	if (string(body) != expected) {
-		t.Errorf("body = %v, want %v", body, expected)
+	if string(body) != expected {
+		t.Errorf("body = %v, want %v", string(body), expected)
 
 	}
 }
@@ -570,7 +568,7 @@ func TestPatchTransactionBadJson(t *testing.T) {
 	router.PATCH("/transactions", PatchTransaction)
 
 	id := 1
-	description := "transaction patch testing"	
+	description := "transaction patch testing"
 	bodyString := fmt.Sprintf(`
 		{
 			"Id": %v,
@@ -599,7 +597,7 @@ func TestPatchTransactionBadJson(t *testing.T) {
 	}
 	expected := "La data enviada no corresponde con una transacción parcial"
 
-	if (string(body) != expected) {
+	if string(body) != expected {
 		t.Errorf("body = %v, want %v", string(body), expected)
 
 	}
@@ -610,7 +608,7 @@ func TestPatchTransactionNonExistingId(t *testing.T) {
 	router.PATCH("/transactions", PatchTransaction)
 
 	id := 99999
-	description := "transaction patch testing"	
+	description := "transaction patch testing"
 	bodyString := fmt.Sprintf(`
 		{
 			"Id": %v,
@@ -639,12 +637,13 @@ func TestPatchTransactionNonExistingId(t *testing.T) {
 	}
 	expected := fmt.Sprintf("La transacción con el id %v no existe", id)
 
-	if (string(body) != expected) {
+	if string(body) != expected {
 		t.Errorf("body = %v, want %v", string(body), expected)
 	}
 }
 
 var lastIdBeforeDeletion IdResponse
+
 func TestDeleteLastTransaction(t *testing.T) {
 	router := httprouter.New()
 	router.GET("/lasttransactionid", GetLastTransactionId)
@@ -670,9 +669,9 @@ func TestDeleteLastTransaction(t *testing.T) {
 		log.Fatal(err)
 		t.Error("Could not read body of response")
 	}
-	
+
 	err = json.Unmarshal(body, &lastId)
-	if (err != nil) {
+	if err != nil {
 		t.Error("Could not read last id from response")
 	}
 
@@ -693,12 +692,12 @@ func TestDeleteLastTransaction(t *testing.T) {
 		t.Error("Could not read body of response")
 	}
 	err = json.Unmarshal(body, &deletedId)
-	if (err != nil) {
+	if err != nil {
 		t.Error("Could not read deleted id from response")
 	}
 	lastIdBeforeDeletion.Id = deletedId.Id
 	t.Log("Testing last id equals deleted id")
-	if (lastId.Id != deletedId.Id) {
+	if lastId.Id != deletedId.Id {
 		t.Errorf("deleted id = %v, want %v", deletedId.Id, lastId.Id)
 	}
 }
@@ -727,15 +726,15 @@ func TestRollbackIdOnDelete(t *testing.T) {
 		log.Fatal(err)
 		t.Error("Could not read body of response")
 	}
-	
+
 	err = json.Unmarshal(body, &lastId)
-	if (err != nil) {
+	if err != nil {
 		t.Error("Could not read last id from response")
 	}
 	wantedId := lastIdBeforeDeletion.Id - 1 // because we deleted one transaction
 
 	t.Log("testing if last id rolledb back on deletion")
-	if (lastId.Id != wantedId) {
+	if lastId.Id != wantedId {
 		t.Errorf("last id = %v, want %v", lastId.Id, wantedId)
 	}
 }

@@ -18,7 +18,7 @@ type TransactionWithBalance struct {
 	Description string
 	Balance     float32
 	Executed    string
-	CreatedAt		string
+	CreatedAt   string
 }
 
 type PartialTransaction struct {
@@ -26,7 +26,7 @@ type PartialTransaction struct {
 	Description string
 }
 
-type IdResponse struct{
+type IdResponse struct {
 	Id int
 }
 
@@ -78,23 +78,23 @@ func CreateTransaction(w http.ResponseWriter, r *http.Request, _ httprouter.Para
 		w.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintf(w, "La data recibida no corresponde con una transacción")
 		return
-	}	
-	if (transaction.Type == "") {
+	}
+	if transaction.Type == "" {
 		w.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintf(w, "Debe especificar el tipo de transacción")
 		return
 	}
-	if (transaction.Type != "input" && transaction.Type != "output") {
+	if transaction.Type != "input" && transaction.Type != "output" {
 		w.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintf(w, "El tipo de transacción solo puede ser del tipo 'input' o 'output'")
 		return
 	}
-	if (transaction.Amount <= 0) {
+	if transaction.Amount <= 0 {
 		w.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintf(w, "El monto de la transacción debe ser mayor a cero")
 		return
 	}
-	if (transaction.Description == "") {
+	if transaction.Description == "" {
 		w.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintf(w, "La transacción debe poseer una descripción")
 		return
@@ -172,12 +172,12 @@ func PatchTransaction(w http.ResponseWriter, r *http.Request, _ httprouter.Param
 		fmt.Fprintf(w, "La data enviada no corresponde con una transacción parcial")
 		return
 	}
-	if (partialTransaction.Id == 1) {
+	if partialTransaction.Id <= 1 {
 		w.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintf(w, "No puede modificar la transacción cero")
 		return
 	}
-	if (partialTransaction.Description == "") {
+	if partialTransaction.Description == "" {
 		w.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintf(w, "La transacción debe poseer una descripión")
 		return
@@ -255,14 +255,13 @@ func DeleteLastTransaction(w http.ResponseWriter, r *http.Request, _ httprouter.
 
 	w.Header().Set("Content-Type", "application/json")
 	response, err := json.Marshal(deletedTransactionId)
-	if (err != nil) {
+	if err != nil {
 		log.Fatal(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	w.Write(response)
 }
-
 
 func GetLastTransactionId(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	lastTransactionId := IdResponse{
@@ -294,7 +293,7 @@ func GetLastTransactionId(w http.ResponseWriter, r *http.Request, _ httprouter.P
 
 	w.Header().Set("Content-Type", "application/json")
 	response, err := json.Marshal(lastTransactionId)
-	if (err != nil) {
+	if err != nil {
 		log.Fatal(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
