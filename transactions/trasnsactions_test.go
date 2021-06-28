@@ -185,6 +185,46 @@ func TestCreateTransactionWithoutType(t *testing.T) {
 	}
 }
 
+func TestCreateTransactionWithoutWrongType(t *testing.T) {
+	router := httprouter.New()
+	router.POST("/transactions", CreateTransaction)
+	transactionType := "wrongtype"
+	transactionAmount := float32(3)
+	transactionDescription := "abc"
+	bodyString := fmt.Sprintf(`
+	{
+    "Type": "%v",
+    "Amount": %v,
+    "Description": "%v"
+  }
+	`, transactionType, transactionAmount, transactionDescription)
+
+	transactionBody := strings.NewReader(bodyString)
+	req, err := http.NewRequest("POST", "/transactions", transactionBody)
+	if err != nil {
+		log.Fatal(err)
+		t.Error("Could not make a post request to /transactions")
+	}
+	rr := httptest.NewRecorder()
+	router.ServeHTTP(rr, req)
+
+	t.Log("testing bad request status code")
+	if status := rr.Code; status != http.StatusBadRequest {
+		t.Errorf("status = %v, want %v", status, http.StatusBadRequest)
+	}
+
+	t.Log("testing error message")
+	body, err := ioutil.ReadAll(rr.Body)
+	if err != nil {
+		log.Fatal(err)
+		t.Error("Could not read body of response")
+	}
+	errMessage := "El tipo de transacción solo puede ser del tipo 'input' o 'output'"
+	if (string(body) != errMessage) {
+		t.Errorf("response = %v, want %v", string(body), errMessage)
+	}
+}
+
 func TestCreateTransactionWithoutAmount(t *testing.T) {
 	router := httprouter.New()
 	router.POST("/transactions", CreateTransaction)
@@ -299,7 +339,7 @@ func TestCreateTransactionWithBadJson(t *testing.T) {
 		log.Fatal(err)
 		t.Error("Could not read body of response")
 	}
-	errMessage := "La data enviada no corresponde con una transacción"
+	errMessage := "La data recibida no corresponde con una transacción"
 	if (string(body) != errMessage) {
 		t.Errorf("response = %v, want %v", string(body), errMessage)
 	}

@@ -21,6 +21,7 @@ func main() {
 	router.GET("/lasttransactionid", transactions.GetLastTransactionId) //mostly for testing porpuses
 
 	router.GET("/pending_transactions", pending_transactions.GetPendingTransactions)
+	router.POST("/pending_transactions", pending_transactions.CreatePendingTransaction)
 
 	log.Fatal(http.ListenAndServe(":8080", router))
 }

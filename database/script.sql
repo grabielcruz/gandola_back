@@ -16,7 +16,7 @@ CREATE TABLE transactions_with_balances (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
-INSERT INTO transactions_with_balances(type, amount, description, balance)
+INSERT INTO transactions_with_balances (type, amount, description, balance)
   VALUES ('zero', '0', 'transaction zero', '0');
 
 CREATE TABLE pending_transactions (
@@ -27,5 +27,5 @@ CREATE TABLE pending_transactions (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
-INSERT INTO pending_transactions(type, amount, description) 
+INSERT INTO pending_transactions (type, amount, description) 
   VALUES ('zero', '0', 'pending transaction zero');

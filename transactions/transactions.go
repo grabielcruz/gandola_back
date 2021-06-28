@@ -76,12 +76,17 @@ func CreateTransaction(w http.ResponseWriter, r *http.Request, _ httprouter.Para
 	err = json.Unmarshal(body, &transaction)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintf(w, "La data enviada no corresponde con una transacción")
+		fmt.Fprintf(w, "La data recibida no corresponde con una transacción")
 		return
 	}	
 	if (transaction.Type == "") {
 		w.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintf(w, "Debe especificar el tipo de transacción")
+		return
+	}
+	if (transaction.Type != "input" && transaction.Type != "output") {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(w, "El tipo de transacción solo puede ser del tipo 'input' o 'output'")
 		return
 	}
 	if (transaction.Amount <= 0) {
@@ -143,8 +148,7 @@ func CreateTransaction(w http.ResponseWriter, r *http.Request, _ httprouter.Para
 			return
 		}
 	}
-	response_data := insertedTransaction
-	response, err := json.Marshal(response_data)
+	response, err := json.Marshal(insertedTransaction)
 	if err != nil {
 		log.Fatal(err)
 		w.WriteHeader(http.StatusInternalServerError)
