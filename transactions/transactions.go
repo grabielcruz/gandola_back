@@ -105,7 +105,7 @@ func CreateTransaction(w http.ResponseWriter, r *http.Request, _ httprouter.Para
 
 	var lastBalance float32
 	var newBalance float32
-	getLastBalanceQuery := "SELECT balance FROM transactions_with_balances ORDER BY id desc LIMIT 1"
+	getLastBalanceQuery := "SELECT balance FROM transactions_with_balances ORDER BY id desc LIMIT 1;"
 	lastTransactionRow, err := db.Query(getLastBalanceQuery)
 	if err != nil {
 		log.Fatal(err)
@@ -132,9 +132,9 @@ func CreateTransaction(w http.ResponseWriter, r *http.Request, _ httprouter.Para
 	}
 
 	insertedTransaction := TransactionWithBalance{}
-	insertedTransactionQuery := fmt.Sprintf("INSERT INTO transactions_with_balances(type, amount, description, balance) VALUES ('%v', '%v', '%v', '%v') RETURNING id, type, amount, description, balance, executed, created_at;", transaction.Type, transaction.Amount, transaction.Description, newBalance)
+	insertTransactionQuery := fmt.Sprintf("INSERT INTO transactions_with_balances(type, amount, description, balance) VALUES ('%v', '%v', '%v', '%v') RETURNING id, type, amount, description, balance, executed, created_at;", transaction.Type, transaction.Amount, transaction.Description, newBalance)
 
-	rows, err := db.Query(insertedTransactionQuery)
+	rows, err := db.Query(insertTransactionQuery)
 	if err != nil {
 		log.Fatal(err)
 		w.WriteHeader(http.StatusInternalServerError)

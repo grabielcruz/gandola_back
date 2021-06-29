@@ -24,6 +24,7 @@ func main() {
 	router.POST("/pending_transactions", pending_transactions.CreatePendingTransaction)
 	router.PATCH("/pending_transactions", pending_transactions.PatchPendingTransaction)
 	router.DELETE("/pending_transactions/:id", pending_transactions.DeletePendingTransaction)
+	router.PUT("/pending_transactions/:id", pending_transactions.ExecutePendingTransaction)
 
 	log.Fatal(http.ListenAndServe(":8080", router))
 }

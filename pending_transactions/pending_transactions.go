@@ -8,6 +8,7 @@ import (
 	"net/http"
 
 	"example.com/backend_gandola_soft/database"
+	"example.com/backend_gandola_soft/transactions"
 	"github.com/julienschmidt/httprouter"
 )
 
@@ -192,15 +193,15 @@ func PatchPendingTransaction(w http.ResponseWriter, r *http.Request, _ httproute
 }
 
 func DeletePendingTransaction(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	requesteId := ps.ByName("id")
-	if requesteId == "" {
+	requestedId := ps.ByName("id")
+	if requestedId == "" {
 		w.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintf(w, "Debe especificar el parametro id en la petición de borrado")
 		return
 	}
 	db := database.ConnectDB()
 	defer db.Close()
-	query := fmt.Sprintf("DELETE FROM pending_transactions WHERE id='%v' RETURNING id;", requesteId)
+	query := fmt.Sprintf("DELETE FROM pending_transactions WHERE id='%v' RETURNING id;", requestedId)
 	rows, err := db.Query(query)
 	if err != nil {
 		log.Fatal(err)
@@ -220,7 +221,7 @@ func DeletePendingTransaction(w http.ResponseWriter, r *http.Request, ps httprou
 
 	if deletedId.Id == 0 {
 		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintf(w, "La transacción pendiente con el id %v no existe", requesteId)
+		fmt.Fprintf(w, "La transacción pendiente con el id %v no existe", requestedId)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -230,5 +231,102 @@ func DeletePendingTransaction(w http.ResponseWriter, r *http.Request, ps httprou
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+	w.Write(response)
+}
+
+func ExecutePendingTransaction(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	requestedId := ps.ByName("id")
+	if requestedId == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(w, "Debe especificar el parametro id en la petición de borrado")
+		return
+	}
+	db := database.ConnectDB()
+	defer db.Close()
+	query := fmt.Sprintf("SELECT * FROM pending_transactions WHERE id='%v';", requestedId)
+	rows, err := db.Query(query)
+	if err != nil {
+		log.Fatal(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	pendingTransaction := PendingTransaction{}
+	for rows.Next() {
+		err = rows.Scan(&pendingTransaction.Id, &pendingTransaction.Type, &pendingTransaction.Amount, &pendingTransaction.Description, &pendingTransaction.CreatedAt)
+		if err != nil {
+			log.Fatal(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+	}
+	if pendingTransaction.Id == 0 {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(w, "La transacción pendiente con el id %v no existe", requestedId)
+		return
+	}
+
+	var lastBalance float32
+	var newBalance float32
+	getLastBalanceQuery := "SELECT balance FROM transactions_with_balances ORDER BY id desc LIMIT 1;"
+	lastTransactionRow, err := db.Query(getLastBalanceQuery)
+	if err != nil {
+		log.Fatal(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	defer lastTransactionRow.Close()
+	for lastTransactionRow.Next() {
+		if err := lastTransactionRow.Scan(&lastBalance); err != nil {
+			log.Fatal(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+	}
+
+	if pendingTransaction.Type == "input" {
+		newBalance = lastBalance + pendingTransaction.Amount
+	} else if pendingTransaction.Type == "output" {
+		newBalance = lastBalance - pendingTransaction.Amount
+		if newBalance < 0 {
+			w.WriteHeader(http.StatusBadRequest)
+			fmt.Fprintf(w, "Su transacción pendiente de id %v no pudo ser ejecutada porque genera un balance menor a cero (0)", requestedId)
+			return
+		}
+	}
+
+	insertedTransaction := transactions.TransactionWithBalance{}
+	insertTransactionQuery := fmt.Sprintf("INSERT INTO transactions_with_balances(type, amount, description, balance, created_at) VALUES ('%v', '%v', '%v', '%v', '%v') RETURNING id, type, amount, description, balance, executed, created_at;", pendingTransaction.Type, pendingTransaction.Amount, pendingTransaction.Description, newBalance, pendingTransaction.CreatedAt)
+
+	rows, err = db.Query(insertTransactionQuery)
+	if err != nil {
+		log.Fatal(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		if err := rows.Scan(&insertedTransaction.Id, &insertedTransaction.Type, &insertedTransaction.Amount, &insertedTransaction.Description, &insertedTransaction.Balance, &insertedTransaction.Executed, &insertedTransaction.CreatedAt); err != nil {
+			log.Fatal(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+	}
+
+	deleteQuery := fmt.Sprintf("DELETE FROM pending_transactions WHERE id='%v' RETURNING id;", requestedId)
+	_, err = db.Query(deleteQuery)
+	if err != nil {
+		log.Fatal(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	response, err := json.Marshal(insertedTransaction)
+	if err != nil {
+		log.Fatal(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
 	w.Write(response)
 }
