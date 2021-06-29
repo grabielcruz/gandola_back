@@ -18,6 +18,7 @@ func main() {
 	router.POST("/transactions", transactions.CreateTransaction)
 	router.PATCH("/transactions", transactions.PatchTransaction)
 	router.DELETE("/transactions", transactions.DeleteLastTransaction)
+	router.PUT("/transactions", transactions.UnexecuteLastTransaction)
 	router.GET("/lasttransactionid", transactions.GetLastTransactionId) //mostly for testing porpuses
 
 	router.GET("/pending_transactions", pending_transactions.GetPendingTransactions)

@@ -21,6 +21,14 @@ type TransactionWithBalance struct {
 	CreatedAt   string
 }
 
+type PendingTransaction struct {
+	Id          int
+	Type        string
+	Amount      float32
+	Description string
+	CreatedAt   string
+}
+
 type PartialTransaction struct {
 	Id          int
 	Description string
@@ -298,5 +306,68 @@ func GetLastTransactionId(w http.ResponseWriter, r *http.Request, _ httprouter.P
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+	w.Write(response)
+}
+
+func UnexecuteLastTransaction(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	lastTransaction := TransactionWithBalance{}
+	db := database.ConnectDB()
+	defer db.Close()
+	query := "SELECT * FROM transactions_with_balances ORDER BY id desc LIMIT 1;"
+	rows, err := db.Query(query)
+	if err != nil {
+		log.Fatal(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+	for rows.Next() {
+		if err := rows.Scan(&lastTransaction.Id, &lastTransaction.Type, &lastTransaction.Amount, &lastTransaction.Description, &lastTransaction.Balance, &lastTransaction.Executed, &lastTransaction.CreatedAt); err != nil {
+			log.Fatal(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+	}
+
+	newPendingTransaction := PendingTransaction{}
+	insertPendingTransactionQuery := fmt.Sprintf("INSERT INTO pending_transactions(type, amount, description, created_at) VALUES ('%v', '%v', '%v', '%v') RETURNING id, type, amount, description, created_at;", lastTransaction.Type, lastTransaction.Amount, lastTransaction.Description, lastTransaction.CreatedAt)
+	rows, err = db.Query(insertPendingTransactionQuery)
+	if err != nil {
+		log.Fatal(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+	for rows.Next() {
+		if err := rows.Scan(&newPendingTransaction.Id, &newPendingTransaction.Type, &newPendingTransaction.Amount, &newPendingTransaction.Description, &newPendingTransaction.CreatedAt); err != nil {
+			log.Fatal(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+	}
+
+	deleteQuery := "DELETE FROM transactions_with_balances WHERE id != 1 AND id in (SELECT id FROM transactions_with_balances ORDER BY id desc LIMIT 1) RETURNING id;"
+	_, err = db.Query(deleteQuery)
+	if err != nil {
+		log.Fatal(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	rollBackIdQuery := "SELECT setval('transactions_with_balances_id_seq', (SELECT last_value from transactions_with_balances_id_seq) - 1);"
+	_, err = db.Query(rollBackIdQuery)
+	if err != nil {
+		log.Fatal(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	response, err := json.Marshal(newPendingTransaction)
+	if err != nil {
+		log.Fatal(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
 	w.Write(response)
 }
