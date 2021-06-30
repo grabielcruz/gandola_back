@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"strconv"
 
 	"example.com/backend_gandola_soft/database"
 	"example.com/backend_gandola_soft/transactions"
@@ -72,7 +73,9 @@ func CreatePendingTransaction(w http.ResponseWriter, r *http.Request, _ httprout
 	}
 	err = json.Unmarshal(body, &transaction)
 	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintf(w, "La data recibida no corresponde con una transacción pendiente")
+		return
 	}
 	if transaction.Type == "" || transaction.Type != "input" {
 		w.WriteHeader(http.StatusBadRequest)
@@ -135,7 +138,7 @@ func PatchPendingTransaction(w http.ResponseWriter, r *http.Request, _ httproute
 	err = json.Unmarshal(body, &newPendingTransaction)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintf(w, "La data enviada no corresponde con un transacción pendiente parcial")
+		fmt.Fprintf(w, "La data enviada no corresponde con una transacción pendiente parcial")
 		return
 	}
 	if newPendingTransaction.Id <= 1 {
@@ -199,6 +202,17 @@ func DeletePendingTransaction(w http.ResponseWriter, r *http.Request, ps httprou
 		fmt.Fprintf(w, "Debe especificar el parametro id en la petición de borrado")
 		return
 	}
+	id, err := strconv.Atoi(requestedId)
+	if err != nil {
+		log.Fatal(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	if id <= 1 {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(w, "No puede modificar la transacción pendiente cero")
+		return
+	}
 	db := database.ConnectDB()
 	defer db.Close()
 	query := fmt.Sprintf("DELETE FROM pending_transactions WHERE id='%v' RETURNING id;", requestedId)
@@ -239,6 +253,17 @@ func ExecutePendingTransaction(w http.ResponseWriter, r *http.Request, ps httpro
 	if requestedId == "" {
 		w.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintf(w, "Debe especificar el parametro id en la petición de borrado")
+		return
+	}
+	id, err := strconv.Atoi(requestedId)
+	if err != nil {
+		log.Fatal(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	if id <= 1 {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(w, "No puede modificar la transacción pendiente cero")
 		return
 	}
 	db := database.ConnectDB()
@@ -328,5 +353,43 @@ func ExecutePendingTransaction(w http.ResponseWriter, r *http.Request, ps httpro
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
+	w.Write(response)
+}
+
+func GetLastTransactionId(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	lastPendingTransactionsId := IdResponse{
+		Id: -1,
+	}
+	db := database.ConnectDB()
+	defer db.Close()
+	query := "SELECT id FROM pending_transactions ORDER BY id desc LIMIT 1;"
+	rows, err := db.Query(query)
+	if err != nil {
+		log.Fatal(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+	for rows.Next() {
+		if err := rows.Scan(&lastPendingTransactionsId.Id); err != nil {
+			log.Fatal(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+	}
+
+	if lastPendingTransactionsId.Id == -1 {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(w, "No existen más transacciones")
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	response, err := json.Marshal(lastPendingTransactionsId)
+	if err != nil {
+		log.Fatal(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 	w.Write(response)
 }

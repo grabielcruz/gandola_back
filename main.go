@@ -26,6 +26,7 @@ func main() {
 	router.PATCH("/pending_transactions", pending_transactions.PatchPendingTransaction)
 	router.DELETE("/pending_transactions/:id", pending_transactions.DeletePendingTransaction)
 	router.PUT("/pending_transactions/:id", pending_transactions.ExecutePendingTransaction)
+	router.GET("/lastpendingtransactionid", pending_transactions.GetLastTransactionId) //mostly for testing porpuses
 
 	log.Fatal(http.ListenAndServe(":8080", router))
 }

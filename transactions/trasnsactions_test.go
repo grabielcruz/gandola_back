@@ -183,7 +183,7 @@ func TestCreateTransactionWithoutType(t *testing.T) {
 	}
 }
 
-func TestCreateTransactionWithoutWrongType(t *testing.T) {
+func TestCreateTransactionWithWrongType(t *testing.T) {
 	router := httprouter.New()
 	router.POST("/transactions", CreateTransaction)
 	transactionType := "wrongtype"
@@ -308,7 +308,7 @@ func TestCreateTransactionWithBadJson(t *testing.T) {
 	router.POST("/transactions", CreateTransaction)
 	transactionType := "input"
 	transactionAmount := float32(3)
-	transactionDescription := ""
+	transactionDescription := "abc"
 	bodyString := fmt.Sprintf(`
 	{
     "Type": "%v",
@@ -426,7 +426,7 @@ func TestPatchTransaction(t *testing.T) {
 	req, err = http.NewRequest("PATCH", "/transactions", transactionBody)
 	if err != nil {
 		log.Fatal(err)
-		t.Error("Could not make a post request to /transactions")
+		t.Error("Could not make a patch request to /transactions")
 	}
 	router.ServeHTTP(rr, req)
 
@@ -435,7 +435,7 @@ func TestPatchTransaction(t *testing.T) {
 		t.Errorf("status = %v, want %v", status, http.StatusOK)
 	}
 
-	t.Log("testing create transaction success")
+	t.Log("testing patch transaction success")
 	transactionResponse := TransactionWithBalance{}
 	body, err = ioutil.ReadAll(rr.Body)
 	if err != nil {
