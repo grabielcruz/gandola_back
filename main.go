@@ -30,3 +30,6 @@ func main() {
 
 	log.Fatal(http.ListenAndServe(":8080", router))
 }
+//TOCONSIDER: maybe I should write tests on demand :D, it takes a hell of time!!!
+//TODO: make separete file for types; check sql injection protection, evaluate missing tests, for execute pending transaction and unexecute last transaction
+//TODO: check amounts with more than 2 decimals
