@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"example.com/backend_gandola_soft/transactions"
 	"github.com/julienschmidt/httprouter"
 )
 
@@ -892,5 +893,64 @@ func TestDeletePendingTransactionWithIdEqualOrLessThanOne(t *testing.T) {
 
 	if string(body) != wanted {
 		t.Errorf("message = %v, want %v", string(body), wanted)
+	}
+}
+
+
+func TestExecutePendingTransaction(t *testing.T) {
+	router := httprouter.New()
+	router.GET("/lastpendingtransactionid", GetLastTransactionId)
+
+	var lastId IdResponse
+
+	req, err := http.NewRequest("GET", "/lastpendingtransactionid", nil)
+	if err != nil {
+		log.Fatal(err)
+		t.Error("Could not make a get request to /lastpendingtransactionid")
+	}
+	rr := httptest.NewRecorder()
+	router.ServeHTTP(rr, req)
+
+	t.Log("testing OK request status code for getting last id")
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("status = %v, want %v", status, http.StatusOK)
+	}
+
+	body, err := ioutil.ReadAll(rr.Body)
+	if err != nil {
+		log.Fatal(err)
+		t.Error("Could not read body of response")
+	}
+
+	err = json.Unmarshal(body, &lastId)
+	if err != nil {
+		t.Error("Could not read last id from response")
+	}
+
+	router.PUT("/pending_transactions/:id", ExecutePendingTransaction)
+	requestUrl := fmt.Sprintf("/pending_transactions/%v", lastId.Id)
+	req2, err := http.NewRequest("PUT", requestUrl, nil)
+	if err != nil {
+		log.Fatal(err)
+		t.Errorf("Could not make a patch request to /pending_transactions/%v", lastId.Id)
+	}
+
+	rr2 := httptest.NewRecorder()
+	router.ServeHTTP(rr2, req2)
+	t.Log("testing OK request status code")
+	if status := rr2.Code; status != http.StatusOK {
+		t.Errorf("status = %v, want %v", status, http.StatusOK)
+	}
+
+	t.Log("testing execute pending transaction success")
+	insertedTransaction := transactions.TransactionWithBalance{}
+	body, err = ioutil.ReadAll(rr2.Body)
+	if err != nil {
+		log.Fatal(err)
+		t.Error("Could not read body of response")
+	}
+	err = json.Unmarshal(body, &insertedTransaction)
+	if err != nil {
+		t.Error("Reponse body does not contain a TransactionWithBalance type")
 	}
 }
