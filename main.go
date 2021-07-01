@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 
+	"example.com/backend_gandola_soft/actors"
 	"example.com/backend_gandola_soft/pending_transactions"
 	"example.com/backend_gandola_soft/transactions"
 
@@ -27,6 +28,9 @@ func main() {
 	router.DELETE("/pending_transactions/:id", pending_transactions.DeletePendingTransaction)
 	router.PUT("/pending_transactions/:id", pending_transactions.ExecutePendingTransaction)
 	router.GET("/lastpendingtransactionid", pending_transactions.GetLastTransactionId) //mostly for testing porpuses
+
+	router.GET("/actors", actors.GetActors)
+	router.POST("/actors", actors.CreateActor)
 
 	log.Fatal(http.ListenAndServe(":8080", router))
 }

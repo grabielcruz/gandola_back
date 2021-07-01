@@ -8,7 +8,7 @@ CREATE TYPE transaction_type AS ENUM ('output', 'input', 'zero');
 
 CREATE TABLE actors (
   id SERIAL PRIMARY KEY,
-  name text NOT NULL,
+  name text NOT NULL UNIQUE,
   description text NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );

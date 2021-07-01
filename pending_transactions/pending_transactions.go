@@ -133,9 +133,9 @@ func CreatePendingTransaction(w http.ResponseWriter, r *http.Request, _ httprout
 
 
 	insertedTransaction := PendingTransaction{}
-	insertedTransactionQuery := fmt.Sprintf("INSERT INTO pending_transactions(type, amount, description, actor) VALUES ('%v', '%v', '%v', '%v') RETURNING id, type, amount, description, actor, created_at;", transaction.Type, transaction.Amount, transaction.Description, transaction.Actor)
+	insertTransactionQuery := fmt.Sprintf("INSERT INTO pending_transactions(type, amount, description, actor) VALUES ('%v', '%v', '%v', '%v') RETURNING id, type, amount, description, actor, created_at;", transaction.Type, transaction.Amount, transaction.Description, transaction.Actor)
 
-	rows, err := db.Query(insertedTransactionQuery)
+	rows, err := db.Query(insertTransactionQuery)
 	if err != nil {
 		log.Fatal(err)
 		w.WriteHeader(http.StatusInternalServerError)
