@@ -378,7 +378,7 @@ func TestPatchPendingTransaction(t *testing.T) {
 			"Description": "%v",
 			"Actor": 1
 		}
-	`, id, transactionType, amount, description )
+	`, id, transactionType, amount, description)
 	transactionBody := strings.NewReader(bodyString)
 	req, err = http.NewRequest("PATCH", "/pending_transactions", transactionBody)
 	if err != nil {
@@ -464,7 +464,7 @@ func TestPatchPendingTransactionEmptyDescription(t *testing.T) {
 			"Description": "%v",
 			"Actor": 1
 		}
-	`, id, transactionType, amount, description )
+	`, id, transactionType, amount, description)
 	transactionBody := strings.NewReader(bodyString)
 	req2, err := http.NewRequest("PATCH", "/pending_transactions", transactionBody)
 	if err != nil {
@@ -535,7 +535,7 @@ func TestPatchPendingTransactionBadType(t *testing.T) {
 			"Description": "%v",
 			"Actor": 1
 		}
-	`, id, transactionType, amount, description )
+	`, id, transactionType, amount, description)
 	transactionBody := strings.NewReader(bodyString)
 	req2, err := http.NewRequest("PATCH", "/pending_transactions", transactionBody)
 	if err != nil {
@@ -606,7 +606,7 @@ func TestPatchPendingTransactionAmountZeroOrLess(t *testing.T) {
 			"Description": "%v",
 			"Actor": 1
 		}
-	`, id, transactionType, amount, description )
+	`, id, transactionType, amount, description)
 	transactionBody := strings.NewReader(bodyString)
 	req2, err := http.NewRequest("PATCH", "/pending_transactions", transactionBody)
 	if err != nil {
@@ -650,7 +650,7 @@ func TestPatchPendingTransactionZero(t *testing.T) {
 			"Description": "%v",
 			"Actor": 1
 		}
-	`, id, transactionType, amount, description )
+	`, id, transactionType, amount, description)
 	transactionBody := strings.NewReader(bodyString)
 	req, err := http.NewRequest("PATCH", "/pending_transactions", transactionBody)
 	if err != nil {
@@ -694,7 +694,7 @@ func TestPatchPendingTransactionBadJson(t *testing.T) {
 			"Description": "%v",
 			"Actor": 1,
 		}
-	`, id, transactionType, amount, description )
+	`, id, transactionType, amount, description)
 	transactionBody := strings.NewReader(bodyString)
 	req, err := http.NewRequest("PATCH", "/pending_transactions", transactionBody)
 	if err != nil {
@@ -738,7 +738,7 @@ func TestPatchPendingTransactionNonExistingId(t *testing.T) {
 			"Description": "%v",
 			"Actor": 1
 		}
-	`, id, transactionType, amount, description )
+	`, id, transactionType, amount, description)
 	transactionBody := strings.NewReader(bodyString)
 	req, err := http.NewRequest("PATCH", "/pending_transactions", transactionBody)
 	if err != nil {
@@ -782,7 +782,7 @@ func TestPatchPendingTransactionNonExistingActor(t *testing.T) {
 			"Description": "%v",
 			"Actor": 9999
 		}
-	`, id, transactionType, amount, description )
+	`, id, transactionType, amount, description)
 	transactionBody := strings.NewReader(bodyString)
 	req, err := http.NewRequest("PATCH", "/pending_transactions", transactionBody)
 	if err != nil {
@@ -991,7 +991,6 @@ func TestDeletePendingTransactionWithIdEqualOrLessThanOne(t *testing.T) {
 		t.Errorf("message = %v, want %v", string(body), wanted)
 	}
 }
-
 
 // func TestExecutePendingTransaction(t *testing.T) {
 // 	router := httprouter.New()

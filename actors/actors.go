@@ -12,10 +12,10 @@ import (
 )
 
 type Actor struct {
-	Id int
-	Name string
+	Id          int
+	Name        string
 	Description string
-	CreatedAt string
+	CreatedAt   string
 }
 
 func GetActors(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
@@ -28,7 +28,7 @@ func GetActors(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	defer rows.Close();
+	defer rows.Close()
 	for rows.Next() {
 		actor := Actor{}
 		err = rows.Scan(&actor.Id, &actor.Name, &actor.Description, &actor.CreatedAt)

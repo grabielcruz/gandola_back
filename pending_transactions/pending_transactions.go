@@ -18,7 +18,7 @@ type PendingTransaction struct {
 	Type        string
 	Amount      float32
 	Description string
-	Actor 			int
+	Actor       int
 	CreatedAt   string
 }
 
@@ -27,7 +27,7 @@ type PartialPendingTransaction struct {
 	Type        string
 	Amount      float32
 	Description string
-	Actor				int
+	Actor       int
 }
 
 type IdResponse struct {
@@ -131,7 +131,6 @@ func CreatePendingTransaction(w http.ResponseWriter, r *http.Request, _ httprout
 		return
 	}
 
-
 	insertedTransaction := PendingTransaction{}
 	insertTransactionQuery := fmt.Sprintf("INSERT INTO pending_transactions(type, amount, description, actor) VALUES ('%v', '%v', '%v', '%v') RETURNING id, type, amount, description, actor, created_at;", transaction.Type, transaction.Amount, transaction.Description, transaction.Actor)
 
@@ -182,7 +181,7 @@ func PatchPendingTransaction(w http.ResponseWriter, r *http.Request, _ httproute
 		fmt.Fprintf(w, "La transacción pendiente debe poseer una descripión")
 		return
 	}
-	if (newPendingTransaction.Type != "input" && newPendingTransaction.Type != "output") {
+	if newPendingTransaction.Type != "input" && newPendingTransaction.Type != "output" {
 		w.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintf(w, "El tipo de la transacción debe ser 'input' o 'output'")
 		return
@@ -338,7 +337,7 @@ func ExecutePendingTransaction(w http.ResponseWriter, r *http.Request, ps httpro
 	}
 	pendingTransaction := PendingTransaction{}
 	for rows.Next() {
-		err = rows.Scan(&pendingTransaction.Id, &pendingTransaction.Type, &pendingTransaction.Amount, &pendingTransaction.Description,  &pendingTransaction.Actor, &pendingTransaction.CreatedAt)
+		err = rows.Scan(&pendingTransaction.Id, &pendingTransaction.Type, &pendingTransaction.Amount, &pendingTransaction.Description, &pendingTransaction.Actor, &pendingTransaction.CreatedAt)
 		if err != nil {
 			log.Fatal(err)
 			w.WriteHeader(http.StatusInternalServerError)
