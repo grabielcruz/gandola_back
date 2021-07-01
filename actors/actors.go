@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"strconv"
 
 	"example.com/backend_gandola_soft/database"
 	"github.com/julienschmidt/httprouter"
@@ -223,6 +224,69 @@ func GetLastActorId(w http.ResponseWriter, r *http.Request, _ httprouter.Params)
 		log.Fatal(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		fmt.Fprintf(w, "Error del servidor")
+		return
+	}
+	w.Write(response)
+}
+
+func DeleteActor(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	requestedId := ps.ByName("id")
+	if requestedId == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(w, "Debe especificar el parametro id en la petición de borrado")
+		return
+	}
+	actorId, err := strconv.Atoi(requestedId)
+	if err != nil {
+		log.Fatal(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprintf(w, "Error del servidor")
+		return
+	}
+	if actorId <= 1 {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(w, "No puede borrar el actor externo")
+		return
+	}
+	db := database.ConnectDB()
+	defer db.Close()
+	query := fmt.Sprintf("DELETE FROM actors WHERE id='%v' RETURNING id;", actorId)
+	rows, err := db.Query(query)
+	if err != nil {
+		if err.Error() == "pq: update or delete on table \"actors\" violates foreign key constraint \"transactions_with_balances_actor_fkey\" on table \"transactions_with_balances\"" {
+			w.WriteHeader(http.StatusBadRequest)
+			fmt.Fprintf(w, "El actor que intenta borrar tiene una o mas transacciones asociadas por lo que no puede ser eliminado")
+			return
+		}
+		log.Fatal(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprintf(w, "Error del servidor")
+		return
+	}
+
+	defer rows.Close()
+	deletedId := IdResponse{}
+	
+	for rows.Next() {
+		err = rows.Scan(&deletedId.Id)
+		if err != nil {
+			log.Fatal(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprintf(w, "Error del servidor")
+		return
+		}
+	}
+
+	if deletedId.Id == 0 {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(w, "El actor con el id %v no existe", requestedId)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	response, err := json.Marshal(deletedId)
+	if err != nil {
+		log.Fatal(err)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	w.Write(response)

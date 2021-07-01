@@ -275,7 +275,7 @@ func DeletePendingTransaction(w http.ResponseWriter, r *http.Request, ps httprou
 	}
 	db := database.ConnectDB()
 	defer db.Close()
-	query := fmt.Sprintf("DELETE FROM pending_transactions WHERE id='%v' RETURNING id;", requestedId)
+	query := fmt.Sprintf("DELETE FROM pending_transactions WHERE id='%v' RETURNING id;", id)
 	rows, err := db.Query(query)
 	if err != nil {
 		log.Fatal(err)
