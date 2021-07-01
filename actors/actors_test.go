@@ -255,3 +255,35 @@ func TestCreateActorWithRepeatedName(t *testing.T) {
 		t.Errorf("reponse = %v, wanted %v", string(body), wanted)
 	}
 }
+
+// func TestPatchActor(t *testing.T) {
+// 	router := httprouter.New()
+// 	router.GET("/lastactorid", GetLastActorId)
+
+// 	var lastId string
+
+// 	req, err := http.NewRequest("GET", "/lastactorid", nil)
+// 	if err != nil {
+// 		log.Fatal(err)
+// 		t.Error("Could not make a get request to /lastactorid")
+// 	}
+
+// 	rr := httptest.NewRecorder()
+// 	router.ServeHTTP(rr, req)
+
+// 	t.Log("testing OK request status code for getting last actor id")
+// 	if status := rr.Code; status != http.StatusOK {
+// 		t.Errorf("status = %v, want %v", status, http.StatusOK)
+// 	}
+
+// 	body, err := ioutil.ReadAll(rr.Body)
+// 	if err != nil {
+// 		log.Fatal(err)
+// 		t.Error("Could not read body of response")
+// 	}
+
+// 	lastId = string(body)
+
+// 	router.PATCH("/actors", PatchActor)
+// 	id := strconv.Atoi(lastId)
+// }

@@ -31,6 +31,8 @@ func main() {
 
 	router.GET("/actors", actors.GetActors)
 	router.POST("/actors", actors.CreateActor)
+	router.PATCH("/actors/:id", actors.PatchActor)
+	router.GET("/lastactorid", actors.GetLastActorId)
 
 	log.Fatal(http.ListenAndServe(":8080", router))
 }
