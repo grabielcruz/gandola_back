@@ -25,7 +25,7 @@ func GetActors(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	defer rows.Close()
 	for rows.Next() {
 		actor := types.Actor{}
-		err = rows.Scan(&actor.Id, &actor.Name, &actor.Description, &actor.CreatedAt)
+		err = rows.Scan(&actor.Id, &actor.Name, &actor.Description, &actor.IsCompany, &actor.CreatedAt)
 		if err != nil {
 			utils.SendInternalServerError(err, w)
 			return
@@ -68,7 +68,7 @@ func CreateActor(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	db := database.ConnectDB()
 	defer db.Close()
 
-	insertActorQuery := fmt.Sprintf("INSERT INTO actors (name, description) VALUES ('%v', '%v') RETURNING id, name, description, created_at;", actor.Name, actor.Description)
+	insertActorQuery := fmt.Sprintf("INSERT INTO actors (name, description, is_company) VALUES ('%v', '%v', '%v') RETURNING id, name, description, is_company, created_at;", actor.Name, actor.Description, actor.IsCompany)
 
 	rows, err := db.Query(insertActorQuery)
 	if err != nil {
@@ -87,7 +87,7 @@ func CreateActor(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		return
 	}
 	for rows.Next() {
-		err = rows.Scan(&actor.Id, &actor.Name, &actor.Description, &actor.CreatedAt)
+		err = rows.Scan(&actor.Id, &actor.Name, &actor.Description, &actor.IsCompany, &actor.CreatedAt)
 		if err != nil {
 			utils.SendInternalServerError(err, w)
 			return
@@ -132,7 +132,7 @@ func PatchActor(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	defer db.Close()
 
 	var updatedActor types.Actor
-	patchActorQuery := fmt.Sprintf("UPDATE actors SET name='%v', description='%v' WHERE id='%v' RETURNING id, name, description, created_at;", partialActor.Name, partialActor.Description, actorId)
+	patchActorQuery := fmt.Sprintf("UPDATE actors SET name='%v', description='%v' WHERE id='%v' RETURNING id, name, description, is_company, created_at;", partialActor.Name, partialActor.Description, actorId)
 	actorRow, err := db.Query(patchActorQuery)
 	if err != nil {
 		if err.Error() == "pq: duplicate key value violates unique constraint \"actors_name_key\"" {
@@ -145,7 +145,7 @@ func PatchActor(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	}
 	defer actorRow.Close()
 	for actorRow.Next() {
-		err = actorRow.Scan(&updatedActor.Id, &updatedActor.Name, &updatedActor.Description, &updatedActor.CreatedAt)
+		err = actorRow.Scan(&updatedActor.Id, &updatedActor.Name, &updatedActor.Description, &updatedActor.IsCompany, &updatedActor.CreatedAt)
 		if err != nil {
 			utils.SendInternalServerError(err, w)
 		}
@@ -180,7 +180,7 @@ func GetLastActor(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 
 	defer rows.Close()
 	for rows.Next() {
-		err = rows.Scan(&lastActor.Id, &lastActor.Name, &lastActor.Description, &lastActor.CreatedAt)
+		err = rows.Scan(&lastActor.Id, &lastActor.Name, &lastActor.Description, &lastActor.IsCompany, &lastActor.CreatedAt)
 		if err != nil {
 			utils.SendInternalServerError(err, w)
 			return

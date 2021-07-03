@@ -53,12 +53,14 @@ func TestCreateActor(t *testing.T) {
 
 	actorName := utils.RandStringBytes(5)
 	actorDescription := "Any guy"
+	actorIsCompany := false
 	bodyString := fmt.Sprintf(`
 		{
 			"Name": "%v",
-			"Description": "%v"
+			"Description": "%v",
+			"IsCompany": %v
 		}
-	`, actorName, actorDescription)
+	`, actorName, actorDescription, actorIsCompany)
 	requestBody := strings.NewReader(bodyString)
 	req, err := http.NewRequest("POST", "/actors", requestBody)
 	if err != nil {
@@ -94,18 +96,73 @@ func TestCreateActor(t *testing.T) {
 	}
 }
 
+func TestCreateActorCompany(t *testing.T) {
+	router := httprouter.New()
+	router.POST("/actors", CreateActor)
+
+	actorName := utils.RandStringBytes(20)
+	actorDescription := "Any guy"
+	actorIsCompany := true
+	bodyString := fmt.Sprintf(`
+		{
+			"Name": "%v",
+			"Description": "%v",
+			"IsCompany": %v
+		}
+	`, actorName, actorDescription, actorIsCompany)
+	requestBody := strings.NewReader(bodyString)
+	req, err := http.NewRequest("POST", "/actors", requestBody)
+	if err != nil {
+		log.Fatal(err)
+		t.Error("Could not make a post request to /actors")
+	}
+	rr := httptest.NewRecorder()
+	router.ServeHTTP(rr, req)
+	t.Log("testing Ok status code")
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("status = %v, want %v", status, http.StatusOK)
+	}
+
+	t.Log("testing create actor company success")
+	requestResponse := types.Actor{}
+	body, err := ioutil.ReadAll(rr.Body)
+	if err != nil {
+		log.Fatal(err)
+		t.Error("Could not read body of response")
+	}
+	err = json.Unmarshal(body, &requestResponse)
+	if err != nil {
+		log.Fatal(err)
+		t.Error("Response body does not contain an Actor type")
+	}
+
+	if requestResponse.Name != actorName {
+		t.Errorf("requestResponse.Name = %v, want %v", requestResponse.Name, actorName)
+	}
+
+	if requestResponse.Description != actorDescription {
+		t.Errorf("requestResponse.Description = %v, want %v", requestResponse.Description, actorDescription)
+	}
+
+	if requestResponse.IsCompany != actorIsCompany {
+		t.Errorf("requestResponse.IsCompany = %v, want %v", requestResponse.IsCompany, actorIsCompany)
+	}
+}
+
 func TestCreateActorWithoutName(t *testing.T) {
 	router := httprouter.New()
 	router.POST("/actors", CreateActor)
 
 	actorName := ""
 	actorDescription := "Any guy"
+	actorIsCompany := false
 	bodyString := fmt.Sprintf(`
 		{
 			"Name": "%v",
-			"Description": "%v"
+			"Description": "%v",
+			"IsCompany": %v
 		}
-	`, actorName, actorDescription)
+	`, actorName, actorDescription, actorIsCompany)
 	requestBody := strings.NewReader(bodyString)
 	req, err := http.NewRequest("POST", "/actors", requestBody)
 	if err != nil {
@@ -135,14 +192,16 @@ func TestCreateActorWithoutDescription(t *testing.T) {
 	router := httprouter.New()
 	router.POST("/actors", CreateActor)
 
-	actorName := utils.RandStringBytes(5)
+	actorName := utils.RandStringBytes(20)
 	actorDescription := ""
+	actorIsCompany := false
 	bodyString := fmt.Sprintf(`
 		{
 			"Name": "%v",
-			"Description": "%v"
+			"Description": "%v",
+			"IsCompany": %v
 		}
-	`, actorName, actorDescription)
+	`, actorName, actorDescription, actorIsCompany)
 	requestBody := strings.NewReader(bodyString)
 	req, err := http.NewRequest("POST", "/actors", requestBody)
 	if err != nil {
@@ -172,14 +231,16 @@ func TestCreateActorWithBadJson(t *testing.T) {
 	router := httprouter.New()
 	router.POST("/actors", CreateActor)
 
-	actorName := utils.RandStringBytes(5)
+	actorName := utils.RandStringBytes(20)
 	actorDescription := "abc"
+	actorIsCompany := false
 	bodyString := fmt.Sprintf(`
 		{
 			"Name": "%v",
 			"Description": "%v",
+			"IsCompany": %v,
 		}
-	`, actorName, actorDescription)
+	`, actorName, actorDescription, actorIsCompany)
 	requestBody := strings.NewReader(bodyString)
 	req, err := http.NewRequest("POST", "/actors", requestBody)
 	if err != nil {
@@ -209,14 +270,16 @@ func TestCreateActorWithRepeatedName(t *testing.T) {
 	router := httprouter.New()
 	router.POST("/actors", CreateActor)
 
-	actorName := utils.RandStringBytes(15)
+	actorName := "externo"
 	actorDescription := "Any guy"
+	actorIsCompany := false
 	bodyString := fmt.Sprintf(`
 		{
 			"Name": "%v",
-			"Description": "%v"
+			"Description": "%v",
+			"IsCompany": %v
 		}
-	`, actorName, actorDescription)
+	`, actorName, actorDescription, actorIsCompany)
 	requestBody := strings.NewReader(bodyString)
 	req, err := http.NewRequest("POST", "/actors", requestBody)
 	if err != nil {
@@ -225,9 +288,9 @@ func TestCreateActorWithRepeatedName(t *testing.T) {
 	}
 	rr := httptest.NewRecorder()
 	router.ServeHTTP(rr, req)
-	t.Log("testing Ok status code")
-	if status := rr.Code; status != http.StatusOK {
-		t.Errorf("status = %v, want %v", status, http.StatusOK)
+	t.Log("testing bad request status code")
+	if status := rr.Code; status != http.StatusBadRequest {
+		t.Errorf("status = %v, want %v", status, http.StatusBadRequest)
 	}
 
 	requestBody2 := strings.NewReader(bodyString)
@@ -250,41 +313,395 @@ func TestCreateActorWithRepeatedName(t *testing.T) {
 		log.Fatal(err)
 		t.Error("Could not read body of response")
 	}
-
 	wanted := "El nombre ya ha sido utilizado"
 	if string(body) != wanted {
 		t.Errorf("reponse = %v, wanted %v", string(body), wanted)
 	}
 }
 
-// func TestPatchActor(t *testing.T) {
-// 	router := httprouter.New()
-// 	router.GET("/lastactorid", GetLastActorId)
+func TestPatchActor(t *testing.T) {
+	router := httprouter.New()
+	router.GET("/lastactor", GetLastActor)
 
-// 	var lastId string
+	var lastActor types.Actor
 
-// 	req, err := http.NewRequest("GET", "/lastactorid", nil)
-// 	if err != nil {
-// 		log.Fatal(err)
-// 		t.Error("Could not make a get request to /lastactorid")
-// 	}
+	req, err := http.NewRequest("GET", "/lastactor", nil)
+	if err != nil {
+		log.Fatal(err)
+		t.Error("Could not make a get request to /lastactor")
+	}
 
-// 	rr := httptest.NewRecorder()
-// 	router.ServeHTTP(rr, req)
+	rr := httptest.NewRecorder()
+	router.ServeHTTP(rr, req)
 
-// 	t.Log("testing OK request status code for getting last actor id")
-// 	if status := rr.Code; status != http.StatusOK {
-// 		t.Errorf("status = %v, want %v", status, http.StatusOK)
-// 	}
+	t.Log("testing OK request status code for getting last actor")
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("status = %v, want %v", status, http.StatusOK)
+	}
 
-// 	body, err := ioutil.ReadAll(rr.Body)
-// 	if err != nil {
-// 		log.Fatal(err)
-// 		t.Error("Could not read body of response")
-// 	}
+	body, err := ioutil.ReadAll(rr.Body)
+	if err != nil {
+		log.Fatal(err)
+		t.Error("Could not read body of response")
+	}
 
-// 	lastId = string(body)
+	t.Log("testing body response to be of Actor type")
+	err = json.Unmarshal(body, &lastActor)
+	if err != nil {
+		t.Error("Response is not of type Actor")
+	}
 
-// 	router.PATCH("/actors", PatchActor)
-// 	id := strconv.Atoi(lastId)
-// }
+	router.PATCH("/actors/:id", PatchActor)
+	requesUrl := fmt.Sprintf("/actors/%v", lastActor.Id)
+
+	actorName := utils.RandStringBytes(20)
+	actorDescription := "test patch actor"
+	bodyString := fmt.Sprintf(`
+		{
+			"Name": "%v",
+			"Description": "%v"
+		}
+	`, actorName, actorDescription)
+	requestBody := strings.NewReader(bodyString)
+	req2, err := http.NewRequest("PATCH", requesUrl, requestBody)
+	if err != nil {
+		log.Fatal(err)
+		t.Error("Could not make a patch request to /actors/:id")
+	}
+	rr2 := httptest.NewRecorder()
+	router.ServeHTTP(rr2, req2)
+
+	t.Log("testing OK request status code for patching last actor")
+	if status := rr2.Code; status != http.StatusOK {
+		t.Errorf("status = %v, want %v", status, http.StatusOK)
+	}
+
+	t.Log("testing getting back an actor from patch request")
+	responnseActor := types.Actor{}
+	body2, err := ioutil.ReadAll(rr2.Body)
+	if err != nil {
+		log.Fatal(err)
+		t.Error("Could not read body of response")
+	}
+	err = json.Unmarshal(body2, &responnseActor)
+	if err != nil {
+		log.Fatal(err)
+		t.Error("Response body does not contain an Actor type")
+	}
+}
+
+func TestPatchActorBadJson(t *testing.T) {
+	router := httprouter.New()
+	router.GET("/lastactor", GetLastActor)
+
+	var lastActor types.Actor
+
+	req, err := http.NewRequest("GET", "/lastactor", nil)
+	if err != nil {
+		log.Fatal(err)
+		t.Error("Could not make a get request to /lastactor")
+	}
+
+	rr := httptest.NewRecorder()
+	router.ServeHTTP(rr, req)
+
+	t.Log("testing OK request status code for getting last actor")
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("status = %v, want %v", status, http.StatusOK)
+	}
+
+	body, err := ioutil.ReadAll(rr.Body)
+	if err != nil {
+		log.Fatal(err)
+		t.Error("Could not read body of response")
+	}
+
+	t.Log("testing body response to be of Actor type")
+	err = json.Unmarshal(body, &lastActor)
+	if err != nil {
+		t.Error("Response is not of type Actor")
+	}
+
+	router.PATCH("/actors/:id", PatchActor)
+	requesUrl := fmt.Sprintf("/actors/%v", lastActor.Id)
+
+	actorName := utils.RandStringBytes(20)
+	actorDescription := "test patch actor"
+	bodyString := fmt.Sprintf(`
+		{
+			"Name": "%v",
+			"Description": "%v",
+		}
+	`, actorName, actorDescription)
+	requestBody := strings.NewReader(bodyString)
+	req2, err := http.NewRequest("PATCH", requesUrl, requestBody)
+	if err != nil {
+		log.Fatal(err)
+		t.Error("Could not make a patch request to /actors/:id")
+	}
+	rr2 := httptest.NewRecorder()
+	router.ServeHTTP(rr2, req2)
+
+	t.Log("testing bad request status code for patching last actor")
+	if status := rr2.Code; status != http.StatusBadRequest {
+		t.Errorf("status = %v, want %v", status, http.StatusBadRequest)
+	}
+
+	t.Log("testing getting back an actor from patch request")
+	body2, err := ioutil.ReadAll(rr2.Body)
+	if err != nil {
+		log.Fatal(err)
+		t.Error("Could not read body of response")
+	}
+	wanted := "La data enviada con corresponde con un actor parcial"
+	if string(body2) != wanted {
+		t.Errorf("response = %v, wanted %v", string(body2), wanted)
+	}
+}
+
+func TestPatchActorEmptyName(t *testing.T) {
+	router := httprouter.New()
+	router.GET("/lastactor", GetLastActor)
+
+	var lastActor types.Actor
+
+	req, err := http.NewRequest("GET", "/lastactor", nil)
+	if err != nil {
+		log.Fatal(err)
+		t.Error("Could not make a get request to /lastactor")
+	}
+
+	rr := httptest.NewRecorder()
+	router.ServeHTTP(rr, req)
+
+	t.Log("testing OK request status code for getting last actor")
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("status = %v, want %v", status, http.StatusOK)
+	}
+
+	body, err := ioutil.ReadAll(rr.Body)
+	if err != nil {
+		log.Fatal(err)
+		t.Error("Could not read body of response")
+	}
+
+	t.Log("testing body response to be of Actor type")
+	err = json.Unmarshal(body, &lastActor)
+	if err != nil {
+		t.Error("Response is not of type Actor")
+	}
+
+	router.PATCH("/actors/:id", PatchActor)
+	requesUrl := fmt.Sprintf("/actors/%v", lastActor.Id)
+
+	actorName := ""
+	actorDescription := "test patch actor"
+	bodyString := fmt.Sprintf(`
+		{
+			"Name": "%v",
+			"Description": "%v"
+		}
+	`, actorName, actorDescription)
+	requestBody := strings.NewReader(bodyString)
+	req2, err := http.NewRequest("PATCH", requesUrl, requestBody)
+	if err != nil {
+		log.Fatal(err)
+		t.Error("Could not make a patch request to /actors/:id")
+	}
+	rr2 := httptest.NewRecorder()
+	router.ServeHTTP(rr2, req2)
+
+	t.Log("testing bad request status code for patching last actor")
+	if status := rr2.Code; status != http.StatusBadRequest {
+		t.Errorf("status = %v, want %v", status, http.StatusBadRequest)
+	}
+
+	t.Log("testing getting back an actor from patch request")
+	body2, err := ioutil.ReadAll(rr2.Body)
+	if err != nil {
+		log.Fatal(err)
+		t.Error("Could not read body of response")
+	}
+	wanted := "Debe especificar el nombre del actor que desea modificar"
+	if string(body2) != wanted {
+		t.Errorf("response = %v, wanted %v", string(body2), wanted)
+	}
+}
+
+func TestPatchActorEmptyDescription(t *testing.T) {
+	router := httprouter.New()
+	router.GET("/lastactor", GetLastActor)
+
+	var lastActor types.Actor
+
+	req, err := http.NewRequest("GET", "/lastactor", nil)
+	if err != nil {
+		log.Fatal(err)
+		t.Error("Could not make a get request to /lastactor")
+	}
+
+	rr := httptest.NewRecorder()
+	router.ServeHTTP(rr, req)
+
+	t.Log("testing OK request status code for getting last actor")
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("status = %v, want %v", status, http.StatusOK)
+	}
+
+	body, err := ioutil.ReadAll(rr.Body)
+	if err != nil {
+		log.Fatal(err)
+		t.Error("Could not read body of response")
+	}
+
+	t.Log("testing body response to be of Actor type")
+	err = json.Unmarshal(body, &lastActor)
+	if err != nil {
+		t.Error("Response is not of type Actor")
+	}
+
+	router.PATCH("/actors/:id", PatchActor)
+	requesUrl := fmt.Sprintf("/actors/%v", lastActor.Id)
+
+	actorName := utils.RandStringBytes(20)
+	actorDescription := ""
+	bodyString := fmt.Sprintf(`
+		{
+			"Name": "%v",
+			"Description": "%v"
+		}
+	`, actorName, actorDescription)
+	requestBody := strings.NewReader(bodyString)
+	req2, err := http.NewRequest("PATCH", requesUrl, requestBody)
+	if err != nil {
+		log.Fatal(err)
+		t.Error("Could not make a patch request to /actors/:id")
+	}
+	rr2 := httptest.NewRecorder()
+	router.ServeHTTP(rr2, req2)
+
+	t.Log("testing bad request status code for patching last actor")
+	if status := rr2.Code; status != http.StatusBadRequest {
+		t.Errorf("status = %v, want %v", status, http.StatusBadRequest)
+	}
+
+	t.Log("testing getting back an actor from patch request")
+	body2, err := ioutil.ReadAll(rr2.Body)
+	if err != nil {
+		log.Fatal(err)
+		t.Error("Could not read body of response")
+	}
+	wanted := "Debe especificar la descripción del actor que desea modificar"
+	if string(body2) != wanted {
+		t.Errorf("response = %v, wanted %v", string(body2), wanted)
+	}
+}
+
+func TestPatchActorDuplicatedName(t *testing.T) {
+	router := httprouter.New()
+	router.GET("/lastactor", GetLastActor)
+
+	var lastActor types.Actor
+
+	req, err := http.NewRequest("GET", "/lastactor", nil)
+	if err != nil {
+		log.Fatal(err)
+		t.Error("Could not make a get request to /lastactor")
+	}
+
+	rr := httptest.NewRecorder()
+	router.ServeHTTP(rr, req)
+
+	t.Log("testing OK request status code for getting last actor")
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("status = %v, want %v", status, http.StatusOK)
+	}
+
+	body, err := ioutil.ReadAll(rr.Body)
+	if err != nil {
+		log.Fatal(err)
+		t.Error("Could not read body of response")
+	}
+
+	t.Log("testing body response to be of Actor type")
+	err = json.Unmarshal(body, &lastActor)
+	if err != nil {
+		t.Error("Response is not of type Actor")
+	}
+
+	router.PATCH("/actors/:id", PatchActor)
+	requesUrl := fmt.Sprintf("/actors/%v", lastActor.Id)
+
+	actorName := "externo"
+	actorDescription := "duplicated name"
+	bodyString := fmt.Sprintf(`
+		{
+			"Name": "%v",
+			"Description": "%v"
+		}
+	`, actorName, actorDescription)
+	requestBody := strings.NewReader(bodyString)
+	req2, err := http.NewRequest("PATCH", requesUrl, requestBody)
+	if err != nil {
+		log.Fatal(err)
+		t.Error("Could not make a patch request to /actors/:id")
+	}
+	rr2 := httptest.NewRecorder()
+	router.ServeHTTP(rr2, req2)
+
+	t.Log("testing bad request status code for patching last actor")
+	if status := rr2.Code; status != http.StatusBadRequest {
+		t.Errorf("status = %v, want %v", status, http.StatusBadRequest)
+	}
+
+	t.Log("testing getting back an actor from patch request")
+	body2, err := ioutil.ReadAll(rr2.Body)
+	if err != nil {
+		log.Fatal(err)
+		t.Error("Could not read body of response")
+	}
+	wanted := "El nombre ya ha sido utilizado"
+	if string(body2) != wanted {
+		t.Errorf("response = %v, wanted %v", string(body2), wanted)
+	}
+}
+
+func TestPatchActorNonExistingActor(t *testing.T) {
+	router := httprouter.New()
+	
+	router.PATCH("/actors/:id", PatchActor)
+	requesUrl := fmt.Sprintf("/actors/%v", 9999)
+
+	actorName := utils.RandStringBytes(10)
+	actorDescription := "non existing actor"
+	bodyString := fmt.Sprintf(`
+		{
+			"Name": "%v",
+			"Description": "%v"
+		}
+	`, actorName, actorDescription)
+	requestBody := strings.NewReader(bodyString)
+	req2, err := http.NewRequest("PATCH", requesUrl, requestBody)
+	if err != nil {
+		log.Fatal(err)
+		t.Error("Could not make a patch request to /actors/:id")
+	}
+	rr2 := httptest.NewRecorder()
+	router.ServeHTTP(rr2, req2)
+
+	t.Log("testing bad request status code for patching last actor")
+	if status := rr2.Code; status != http.StatusBadRequest {
+		t.Errorf("status = %v, want %v", status, http.StatusBadRequest)
+	}
+
+	t.Log("testing getting back an actor from patch request")
+	body2, err := ioutil.ReadAll(rr2.Body)
+	if err != nil {
+		log.Fatal(err)
+		t.Error("Could not read body of response")
+	}
+	wanted := "El actor especificado no existe"
+	if string(body2) != wanted {
+		t.Errorf("response = %v, wanted %v", string(body2), wanted)
+	}
+}

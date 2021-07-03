@@ -10,6 +10,7 @@ CREATE TABLE actors (
   id SERIAL PRIMARY KEY,
   name TEXT NOT NULL UNIQUE,
   description TEXT NOT NULL,
+  is_company BOOLEAN NOT NULL DEFAULT FALSE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -39,13 +40,13 @@ CREATE TABLE pending_transactions (
 );
 
 INSERT INTO pending_transactions (type, amount, description, actor) 
-  VALUES ('zero', '0', 'pending transaction zero', '1');
+  VALUES ('input', '0', 'pending transaction zero', '1');
 
-CREATE TABLE bills (
+CREATE TABLE trip_bills (
   id TEXT PRIMARY KEY,
   url TEXT NOT NULL,
   date TIME WITH TIME ZONE DEFAULT CURRENT_TIME,
-  actor INT REFERENCES actors(id) ON DELETE RESTRICT NOT NULL,
+  company INT REFERENCES actors(id) ON DELETE RESTRICT NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -57,7 +58,7 @@ CREATE TABLE trips (
   cargo TEXT NOT NULL,
   driver TEXT NOT NULL,
   truck TEXT NOT NULL,
-  bill TEXT REFERENCES bills(id) ON DELETE RESTRICT,
+  bill TEXT REFERENCES trip_bills(id) ON DELETE RESTRICT,
   notes TEXT 
 );
 
