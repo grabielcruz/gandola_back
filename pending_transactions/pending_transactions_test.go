@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"example.com/backend_gandola_soft/types"
 	"github.com/julienschmidt/httprouter"
 )
 
@@ -32,7 +33,7 @@ func TestGetPendingTransactions(t *testing.T) {
 	}
 
 	t.Log("testing for an array of pending transactions")
-	pendingTransactions := []PendingTransaction{}
+	pendingTransactions := []types.PendingTransaction{}
 	body, err := ioutil.ReadAll(rr.Body)
 	if err != nil {
 		log.Fatal(err)
@@ -74,7 +75,7 @@ func TestCreatePendingTransaction(t *testing.T) {
 	}
 
 	t.Log("testing create transaction success")
-	transactionResponse := PendingTransaction{}
+	transactionResponse := types.PendingTransaction{}
 	body, err := ioutil.ReadAll(rr.Body)
 	if err != nil {
 		log.Fatal(err)
@@ -339,7 +340,7 @@ func TestPatchPendingTransaction(t *testing.T) {
 	router := httprouter.New()
 	router.GET("/lastpendingtransactionid", GetLastTransactionId)
 
-	var lastId IdResponse
+	var lastId types.IdResponse
 
 	req, err := http.NewRequest("GET", "/lastpendingtransactionid", nil)
 	if err != nil {
@@ -365,22 +366,22 @@ func TestPatchPendingTransaction(t *testing.T) {
 		t.Error("Could not read last id from response")
 	}
 
-	router.PATCH("/pending_transactions", PatchPendingTransaction)
+	router.PATCH("/pending_transactions/:id", PatchPendingTransaction)
 	id := lastId.Id
 	transactionType := "output"
 	amount := float32(5)
 	description := "patch pending transaction test"
 	bodyString := fmt.Sprintf(`
 		{
-			"Id": %v,
 			"Type": "%v",
 			"Amount": %v,
 			"Description": "%v",
 			"Actor": 1
 		}
-	`, id, transactionType, amount, description)
+	`, transactionType, amount, description)
 	transactionBody := strings.NewReader(bodyString)
-	req, err = http.NewRequest("PATCH", "/pending_transactions", transactionBody)
+	urlRequest := fmt.Sprintf("/pending_transactions/%v", id)
+	req, err = http.NewRequest("PATCH", urlRequest, transactionBody)
 	if err != nil {
 		log.Fatal(err)
 		t.Error("Could not make a patch request to /pending_transactions")
@@ -393,7 +394,7 @@ func TestPatchPendingTransaction(t *testing.T) {
 	}
 
 	t.Log("testing patch pending transaction success")
-	pendingTransactionResponse := PendingTransaction{}
+	pendingTransactionResponse := types.PendingTransaction{}
 	body, err = ioutil.ReadAll(rr.Body)
 	if err != nil {
 		log.Fatal(err)
@@ -425,7 +426,7 @@ func TestPatchPendingTransactionEmptyDescription(t *testing.T) {
 	router := httprouter.New()
 	router.GET("/lastpendingtransactionid", GetLastTransactionId)
 
-	var lastId IdResponse
+	var lastId types.IdResponse
 
 	req, err := http.NewRequest("GET", "/lastpendingtransactionid", nil)
 	if err != nil {
@@ -451,22 +452,22 @@ func TestPatchPendingTransactionEmptyDescription(t *testing.T) {
 		t.Error("Could not read last id from response")
 	}
 
-	router.PATCH("/pending_transactions", PatchPendingTransaction)
+	router.PATCH("/pending_transactions/:id", PatchPendingTransaction)
 	id := lastId.Id
 	transactionType := "output"
 	amount := float32(5)
 	description := ""
 	bodyString := fmt.Sprintf(`
 		{
-			"Id": %v,
 			"Type": "%v",
 			"Amount": %v,
 			"Description": "%v",
 			"Actor": 1
 		}
-	`, id, transactionType, amount, description)
+	`,transactionType, amount, description)
 	transactionBody := strings.NewReader(bodyString)
-	req2, err := http.NewRequest("PATCH", "/pending_transactions", transactionBody)
+	urlRequest := fmt.Sprintf("/pending_transactions/%v", id)
+	req2, err := http.NewRequest("PATCH", urlRequest, transactionBody)
 	if err != nil {
 		log.Fatal(err)
 		t.Error("Could not make a patch request to /pending_transactions")
@@ -496,7 +497,7 @@ func TestPatchPendingTransactionBadType(t *testing.T) {
 	router := httprouter.New()
 	router.GET("/lastpendingtransactionid", GetLastTransactionId)
 
-	var lastId IdResponse
+	var lastId types.IdResponse
 
 	req, err := http.NewRequest("GET", "/lastpendingtransactionid", nil)
 	if err != nil {
@@ -522,22 +523,22 @@ func TestPatchPendingTransactionBadType(t *testing.T) {
 		t.Error("Could not read last id from response")
 	}
 
-	router.PATCH("/pending_transactions", PatchPendingTransaction)
+	router.PATCH("/pending_transactions/:id", PatchPendingTransaction)
 	id := lastId.Id
 	transactionType := "noType"
 	amount := float32(5)
 	description := "bad type"
 	bodyString := fmt.Sprintf(`
 		{
-			"Id": %v,
 			"Type": "%v",
 			"Amount": %v,
 			"Description": "%v",
 			"Actor": 1
 		}
-	`, id, transactionType, amount, description)
+	`, transactionType, amount, description)
 	transactionBody := strings.NewReader(bodyString)
-	req2, err := http.NewRequest("PATCH", "/pending_transactions", transactionBody)
+	urlRequest := fmt.Sprintf("/pending_transactions/%v", id)
+	req2, err := http.NewRequest("PATCH", urlRequest, transactionBody)
 	if err != nil {
 		log.Fatal(err)
 		t.Error("Could not make a patch request to /pending_transactions")
@@ -567,7 +568,7 @@ func TestPatchPendingTransactionAmountZeroOrLess(t *testing.T) {
 	router := httprouter.New()
 	router.GET("/lastpendingtransactionid", GetLastTransactionId)
 
-	var lastId IdResponse
+	var lastId types.IdResponse
 
 	req, err := http.NewRequest("GET", "/lastpendingtransactionid", nil)
 	if err != nil {
@@ -593,22 +594,22 @@ func TestPatchPendingTransactionAmountZeroOrLess(t *testing.T) {
 		t.Error("Could not read last id from response")
 	}
 
-	router.PATCH("/pending_transactions", PatchPendingTransaction)
+	router.PATCH("/pending_transactions/:id", PatchPendingTransaction)
 	id := lastId.Id
 	transactionType := "input"
 	amount := float32(0)
 	description := "amount zero"
 	bodyString := fmt.Sprintf(`
 		{
-			"Id": %v,
 			"Type": "%v",
 			"Amount": %v,
 			"Description": "%v",
 			"Actor": 1
 		}
-	`, id, transactionType, amount, description)
+	`, transactionType, amount, description)
 	transactionBody := strings.NewReader(bodyString)
-	req2, err := http.NewRequest("PATCH", "/pending_transactions", transactionBody)
+	urlRequest := fmt.Sprintf("/pending_transactions/%v", id)
+	req2, err := http.NewRequest("PATCH", urlRequest, transactionBody)
 	if err != nil {
 		log.Fatal(err)
 		t.Error("Could not make a patch request to /pending_transactions")
@@ -637,22 +638,22 @@ func TestPatchPendingTransactionAmountZeroOrLess(t *testing.T) {
 func TestPatchPendingTransactionZero(t *testing.T) {
 	router := httprouter.New()
 
-	router.PATCH("/pending_transactions", PatchPendingTransaction)
+	router.PATCH("/pending_transactions/:id", PatchPendingTransaction)
 	id := 1
 	transactionType := "output"
 	amount := float32(5)
 	description := "patching transaction zero"
 	bodyString := fmt.Sprintf(`
 		{
-			"Id": %v,
 			"Type": "%v",
 			"Amount": %v,
 			"Description": "%v",
 			"Actor": 1
 		}
-	`, id, transactionType, amount, description)
+	`, transactionType, amount, description)
 	transactionBody := strings.NewReader(bodyString)
-	req, err := http.NewRequest("PATCH", "/pending_transactions", transactionBody)
+	urlRequest := fmt.Sprintf("/pending_transactions/%v", id)
+	req, err := http.NewRequest("PATCH", urlRequest, transactionBody)
 	if err != nil {
 		log.Fatal(err)
 		t.Error("Could not make a patch request to /pending_transactions")
@@ -681,22 +682,22 @@ func TestPatchPendingTransactionZero(t *testing.T) {
 func TestPatchPendingTransactionBadJson(t *testing.T) {
 	router := httprouter.New()
 
-	router.PATCH("/pending_transactions", PatchPendingTransaction)
+	router.PATCH("/pending_transactions/:id", PatchPendingTransaction)
 	id := 2
 	transactionType := "output"
 	amount := float32(5)
 	description := "patching transaction zero"
 	bodyString := fmt.Sprintf(`
 		{
-			"Id": %v,
 			"Type": "%v",
 			"Amount": %v,
 			"Description": "%v",
 			"Actor": 1,
 		}
-	`, id, transactionType, amount, description)
+	`, transactionType, amount, description)
 	transactionBody := strings.NewReader(bodyString)
-	req, err := http.NewRequest("PATCH", "/pending_transactions", transactionBody)
+	urlRequest := fmt.Sprintf("/pending_transactions/%v", id)
+	req, err := http.NewRequest("PATCH", urlRequest, transactionBody)
 	if err != nil {
 		log.Fatal(err)
 		t.Error("Could not make a patch request to /pending_transactions")
@@ -725,22 +726,22 @@ func TestPatchPendingTransactionBadJson(t *testing.T) {
 func TestPatchPendingTransactionNonExistingId(t *testing.T) {
 	router := httprouter.New()
 
-	router.PATCH("/pending_transactions", PatchPendingTransaction)
+	router.PATCH("/pending_transactions/:id", PatchPendingTransaction)
 	id := 9999999
 	transactionType := "output"
 	amount := float32(5)
 	description := "non existing id"
 	bodyString := fmt.Sprintf(`
 		{
-			"Id": %v,
 			"Type": "%v",
 			"Amount": %v,
 			"Description": "%v",
 			"Actor": 1
 		}
-	`, id, transactionType, amount, description)
+	`, transactionType, amount, description)
 	transactionBody := strings.NewReader(bodyString)
-	req, err := http.NewRequest("PATCH", "/pending_transactions", transactionBody)
+	urlRequest := fmt.Sprintf("/pending_transactions/%v", id)
+	req, err := http.NewRequest("PATCH", urlRequest, transactionBody)
 	if err != nil {
 		log.Fatal(err)
 		t.Error("Could not make a patch request to /pending_transactions")
@@ -769,22 +770,22 @@ func TestPatchPendingTransactionNonExistingId(t *testing.T) {
 func TestPatchPendingTransactionNonExistingActor(t *testing.T) {
 	router := httprouter.New()
 
-	router.PATCH("/pending_transactions", PatchPendingTransaction)
+	router.PATCH("/pending_transactions/:id", PatchPendingTransaction)
 	id := 9999999
 	transactionType := "output"
 	amount := float32(5)
 	description := "non existing id"
 	bodyString := fmt.Sprintf(`
 		{
-			"Id": %v,
 			"Type": "%v",
 			"Amount": %v,
 			"Description": "%v",
 			"Actor": 9999
 		}
-	`, id, transactionType, amount, description)
+	`, transactionType, amount, description)
 	transactionBody := strings.NewReader(bodyString)
-	req, err := http.NewRequest("PATCH", "/pending_transactions", transactionBody)
+	urlRequest := fmt.Sprintf("/pending_transactions/%v", id)
+	req, err := http.NewRequest("PATCH", urlRequest, transactionBody)
 	if err != nil {
 		log.Fatal(err)
 		t.Error("Could not make a patch request to /pending_transactions")
@@ -814,7 +815,7 @@ func TestDeletePendingTransaction(t *testing.T) {
 	router := httprouter.New()
 	router.GET("/lastpendingtransactionid", GetLastTransactionId)
 
-	var lastId IdResponse
+	var lastId types.IdResponse
 
 	req, err := http.NewRequest("GET", "/lastpendingtransactionid", nil)
 	if err != nil {
@@ -856,7 +857,7 @@ func TestDeletePendingTransaction(t *testing.T) {
 	}
 
 	t.Log("testing delete pending transaction success")
-	deletedId := IdResponse{}
+	deletedId := types.IdResponse{}
 	body, err = ioutil.ReadAll(rr2.Body)
 	if err != nil {
 		log.Fatal(err)
@@ -992,60 +993,104 @@ func TestDeletePendingTransactionWithIdEqualOrLessThanOne(t *testing.T) {
 	}
 }
 
-// func TestExecutePendingTransaction(t *testing.T) {
-// 	router := httprouter.New()
-// 	router.GET("/lastpendingtransactionid", GetLastTransactionId)
+func TestExecutePendingTransaction(t *testing.T) {
+	router := httprouter.New()
+	router.GET("/lastpendingtransactionid", GetLastTransactionId)
+	router.POST("/pending_transactions", CreatePendingTransaction)
 
-// 	var lastId IdResponse
+	transactionType := "input"
+	transactionAmount := float32(42)
+	transactionDescription := "pending transaction for make execution"
+	bodyString := fmt.Sprintf(`
+	{
+		"Type": "%v",
+		"Amount": %v,
+		"Description": "%v",
+		"Actor": 1
+	}
+	`, transactionType, transactionAmount, transactionDescription)
+	transactionBody := strings.NewReader(bodyString)
+	req, err := http.NewRequest("POST", "/pending_transactions", transactionBody)
+	if err != nil {
+		log.Fatal(err)
+		t.Error("Could not make a post request to /pending_transactions")
+	}
+	rr := httptest.NewRecorder()
+	router.ServeHTTP(rr, req)
+	t.Log("testing OK status code")
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("status = %v, want %v", status, http.StatusOK)
+	}
 
-// 	req, err := http.NewRequest("GET", "/lastpendingtransactionid", nil)
-// 	if err != nil {
-// 		log.Fatal(err)
-// 		t.Error("Could not make a get request to /lastpendingtransactionid")
-// 	}
-// 	rr := httptest.NewRecorder()
-// 	router.ServeHTTP(rr, req)
+	t.Log("testing create transaction success")
+	transactionResponse := types.PendingTransaction{}
+	body, err := ioutil.ReadAll(rr.Body)
+	if err != nil {
+		log.Fatal(err)
+		t.Error("Could not read body of response")
+	}
+	err = json.Unmarshal(body, &transactionResponse)
+	if err != nil {
+		t.Error("Response body does not contain a PendingTransaction type")
+	}
 
-// 	t.Log("testing OK request status code for getting last id")
-// 	if status := rr.Code; status != http.StatusOK {
-// 		t.Errorf("status = %v, want %v", status, http.StatusOK)
-// 	}
+	router.PUT("/pending_transactions/:id", ExecutePendingTransaction)
+	id := transactionResponse.Id
+	
+	urlRequest := fmt.Sprintf("/pending_transactions/%v", id)
+	req2, err := http.NewRequest("PUT", urlRequest, nil)
+	if err != nil {
+		log.Fatal(err)
+		t.Error("Could not make a put request to /pending_transactions/:id")
+	}
 
-// 	body, err := ioutil.ReadAll(rr.Body)
-// 	if err != nil {
-// 		log.Fatal(err)
-// 		t.Error("Could not read body of response")
-// 	}
+	rr2 := httptest.NewRecorder()
+	router.ServeHTTP(rr2, req2)
+	t.Log("testing OK request status code")
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("status = %v, want %v", status, http.StatusOK)
+	}
 
-// 	err = json.Unmarshal(body, &lastId)
-// 	if err != nil {
-// 		t.Error("Could not read last id from response")
-// 	}
+	t.Log("testing put pending transaction success")
+	newTransaction := types.TransactionWithBalance{}
+	body2, err := ioutil.ReadAll(rr2.Body)
+	if err != nil {
+		log.Fatal(err)
+		t.Error("Could not read body of response")
+	}
+	err = json.Unmarshal(body2, &newTransaction)
+	if err != nil {
+		t.Error("Reponse body does not contain a TransactionWithBalance type")
+	}
 
-// 	router.PUT("/pending_transactions/:id", ExecutePendingTransaction)
-// 	requestUrl := fmt.Sprintf("/pending_transactions/%v", lastId.Id)
-// 	req2, err := http.NewRequest("PUT", requestUrl, nil)
-// 	if err != nil {
-// 		log.Fatal(err)
-// 		t.Errorf("Could not make a patch request to /pending_transactions/%v", lastId.Id)
-// 	}
+	var lastIdAfterExecution types.IdResponse
+	req3, err := http.NewRequest("GET", "/lastpendingtransactionid", nil)
+	if err != nil {
+		log.Fatal(err)
+		t.Error("Could not make a get request to /lastpendingtransactionid")
+	}
+	rr3 := httptest.NewRecorder()
+	router.ServeHTTP(rr3, req3)
 
-// 	rr2 := httptest.NewRecorder()
-// 	router.ServeHTTP(rr2, req2)
-// 	t.Log("testing OK request status code")
-// 	if status := rr2.Code; status != http.StatusOK {
-// 		t.Errorf("status = %v, want %v", status, http.StatusOK)
-// 	}
+	t.Log("testing OK request status code for getting last id after execution")
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("status = %v, want %v", status, http.StatusOK)
+	}
 
-// 	t.Log("testing execute pending transaction success")
-// 	insertedTransaction := transactions.TransactionWithBalance{}
-// 	body, err = ioutil.ReadAll(rr2.Body)
-// 	if err != nil {
-// 		log.Fatal(err)
-// 		t.Error("Could not read body of response")
-// 	}
-// 	err = json.Unmarshal(body, &insertedTransaction)
-// 	if err != nil {
-// 		t.Error("Reponse body does not contain a TransactionWithBalance type")
-// 	}
-// }
+	body3, err := ioutil.ReadAll(rr3.Body)
+	if err != nil {
+		log.Fatal(err)
+		t.Error("Could not read body of response")
+	}
+
+	t.Log("testing IdResponse after execution")
+	err = json.Unmarshal(body3, &lastIdAfterExecution)
+	if err != nil {
+		t.Error("Could not read last id from response")
+	}
+
+	t.Log("testing IdResponse.Id after execution is less than IdResponse.Id before execution")
+	if (lastIdAfterExecution.Id >= transactionResponse.Id) {
+		t.Errorf("lastIdAfterExecution = %v, lastIdBeforeExecution = %v", lastIdAfterExecution.Id, transactionResponse.Id)
+	}
+}

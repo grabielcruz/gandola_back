@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"example.com/backend_gandola_soft/types"
 	"example.com/backend_gandola_soft/utils"
 	"github.com/julienschmidt/httprouter"
 )
@@ -33,7 +34,7 @@ func TestGetActors(t *testing.T) {
 	}
 
 	t.Log("testing for an array of actors")
-	actors := []Actor{}
+	actors := []types.Actor{}
 	body, err := ioutil.ReadAll(rr.Body)
 	if err != nil {
 		log.Fatal(err)
@@ -72,7 +73,7 @@ func TestCreateActor(t *testing.T) {
 	}
 
 	t.Log("testing create actor success")
-	requestResponse := Actor{}
+	requestResponse := types.Actor{}
 	body, err := ioutil.ReadAll(rr.Body)
 	if err != nil {
 		log.Fatal(err)

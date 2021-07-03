@@ -4,70 +4,40 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
+	"strconv"
 
 	"example.com/backend_gandola_soft/database"
+	"example.com/backend_gandola_soft/types"
+	"example.com/backend_gandola_soft/utils"
 	"github.com/julienschmidt/httprouter"
 )
-
-type TransactionWithBalance struct {
-	Id          int
-	Type        string
-	Amount      float32
-	Description string
-	Balance     float32
-	Actor       int
-	Executed    string
-	CreatedAt   string
-}
-
-type PendingTransaction struct {
-	Id          int
-	Type        string
-	Amount      float32
-	Description string
-	Actor       int
-	CreatedAt   string
-}
-
-type PartialTransaction struct {
-	Id          int
-	Description string
-}
-
-type IdResponse struct {
-	Id int
-}
 
 func Index(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	fmt.Fprintf(w, "Server working")
 }
 
 func GetTransactions(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	transactions := []TransactionWithBalance{}
+	transactions := []types.TransactionWithBalance{}
 	db := database.ConnectDB()
 	defer db.Close()
 	rows, err := db.Query("SELECT * FROM transactions_with_balances ORDER BY id ASC;")
 	if err != nil {
-		log.Fatal(err)
-		w.WriteHeader(http.StatusInternalServerError)
+		utils.SendInternalServerError(err, w)
 		return
 	}
 	defer rows.Close()
 	for rows.Next() {
-		transaction := TransactionWithBalance{}
+		transaction := types.TransactionWithBalance{}
 		if err := rows.Scan(&transaction.Id, &transaction.Type, &transaction.Amount, &transaction.Description, &transaction.Balance, &transaction.Actor, &transaction.Executed, &transaction.CreatedAt); err != nil {
-			log.Fatal(err)
-			w.WriteHeader(http.StatusInternalServerError)
+			utils.SendInternalServerError(err, w)
 			return
 		}
 		transactions = append(transactions, transaction)
 	}
 	json_transactions, err := json.Marshal(transactions)
 	if err != nil {
-		log.Fatal(err)
-		w.WriteHeader(http.StatusInternalServerError)
+		utils.SendInternalServerError(err, w)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -76,7 +46,7 @@ func GetTransactions(w http.ResponseWriter, r *http.Request, _ httprouter.Params
 
 // TODO: check sql injection issue
 func CreateTransaction(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	transaction := TransactionWithBalance{}
+	transaction := types.TransactionWithBalance{}
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -122,15 +92,13 @@ func CreateTransaction(w http.ResponseWriter, r *http.Request, _ httprouter.Para
 	getActorIdQuery := fmt.Sprintf("SELECT id FROM actors WHERE id=%v", transaction.Actor)
 	actorIdRow, err := db.Query(getActorIdQuery)
 	if err != nil {
-		log.Fatal(err)
-		w.WriteHeader(http.StatusInternalServerError)
+		utils.SendInternalServerError(err, w)
 		return
 	}
 	defer actorIdRow.Close()
 	for actorIdRow.Next() {
 		if err := actorIdRow.Scan(&actorId); err != nil {
-			log.Fatal(err)
-			w.WriteHeader(http.StatusInternalServerError)
+			utils.SendInternalServerError(err, w)
 			return
 		}
 	}
@@ -146,15 +114,13 @@ func CreateTransaction(w http.ResponseWriter, r *http.Request, _ httprouter.Para
 	getLastBalanceQuery := "SELECT balance FROM transactions_with_balances ORDER BY id desc LIMIT 1;"
 	lastTransactionRow, err := db.Query(getLastBalanceQuery)
 	if err != nil {
-		log.Fatal(err)
-		w.WriteHeader(http.StatusInternalServerError)
+		utils.SendInternalServerError(err, w)
 		return
 	}
 	defer lastTransactionRow.Close()
 	for lastTransactionRow.Next() {
 		if err := lastTransactionRow.Scan(&lastBalance); err != nil {
-			log.Fatal(err)
-			w.WriteHeader(http.StatusInternalServerError)
+			utils.SendInternalServerError(err, w)
 			return
 		}
 	}
@@ -169,35 +135,38 @@ func CreateTransaction(w http.ResponseWriter, r *http.Request, _ httprouter.Para
 		}
 	}
 
-	insertedTransaction := TransactionWithBalance{}
+	insertedTransaction := types.TransactionWithBalance{}
 	insertTransactionQuery := fmt.Sprintf("INSERT INTO transactions_with_balances(type, amount, description, balance, actor) VALUES ('%v', '%v', '%v', '%v', '%v') RETURNING id, type, amount, description, balance, actor, executed, created_at;", transaction.Type, transaction.Amount, transaction.Description, newBalance, transaction.Actor)
 
 	rows, err := db.Query(insertTransactionQuery)
 	if err != nil {
-		log.Fatal(err)
-		w.WriteHeader(http.StatusInternalServerError)
+		utils.SendInternalServerError(err, w)
 		return
 	}
 	defer rows.Close()
 	for rows.Next() {
 		if err := rows.Scan(&insertedTransaction.Id, &insertedTransaction.Type, &insertedTransaction.Amount, &insertedTransaction.Description, &insertedTransaction.Balance, &insertedTransaction.Actor, &insertedTransaction.Executed, &insertedTransaction.CreatedAt); err != nil {
-			log.Fatal(err)
-			w.WriteHeader(http.StatusInternalServerError)
+			utils.SendInternalServerError(err, w)
 			return
 		}
 	}
 	response, err := json.Marshal(insertedTransaction)
 	if err != nil {
-		log.Fatal(err)
-		w.WriteHeader(http.StatusInternalServerError)
+		utils.SendInternalServerError(err, w)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(response)
 }
 
-func PatchTransaction(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	partialTransaction := PartialTransaction{}
+func PatchTransaction(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	requestId := ps.ByName("id")
+	transactionId, err := strconv.Atoi(requestId)
+	if err != nil {
+		utils.SendInternalServerError(err, w)
+		return
+	}
+	partialTransaction := types.PartialTransaction{}
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -210,7 +179,7 @@ func PatchTransaction(w http.ResponseWriter, r *http.Request, _ httprouter.Param
 		fmt.Fprintf(w, "La data enviada no corresponde con una transacción parcial")
 		return
 	}
-	if partialTransaction.Id <= 1 {
+	if transactionId <= 1 {
 		w.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintf(w, "No puede modificar la transacción cero")
 		return
@@ -220,35 +189,32 @@ func PatchTransaction(w http.ResponseWriter, r *http.Request, _ httprouter.Param
 		fmt.Fprintf(w, "La transacción debe poseer una descripión")
 		return
 	}
-	query := fmt.Sprintf("UPDATE transactions_with_balances SET description='%v' WHERE id='%v' RETURNING id, type, amount, description, balance, actor, executed, created_at;", partialTransaction.Description, partialTransaction.Id)
+	query := fmt.Sprintf("UPDATE transactions_with_balances SET description='%v' WHERE id='%v' RETURNING id, type, amount, description, balance, actor, executed, created_at;", partialTransaction.Description, transactionId)
 
-	modifiedTransaction := TransactionWithBalance{}
+	modifiedTransaction := types.TransactionWithBalance{}
 	db := database.ConnectDB()
 	defer db.Close()
 	rows, err := db.Query(query)
 	if err != nil {
-		log.Fatal(err)
-		w.WriteHeader(http.StatusInternalServerError)
+		utils.SendInternalServerError(err, w)
 		return
 	}
 	defer rows.Close()
 	for rows.Next() {
 		if err := rows.Scan(&modifiedTransaction.Id, &modifiedTransaction.Type, &modifiedTransaction.Amount, &modifiedTransaction.Description, &modifiedTransaction.Balance, &modifiedTransaction.Actor, &modifiedTransaction.Executed, &modifiedTransaction.CreatedAt); err != nil {
-			log.Fatal(err)
-			w.WriteHeader(http.StatusInternalServerError)
+			utils.SendInternalServerError(err, w)
 			return
 		}
 	}
 
 	if modifiedTransaction.Id == 0 {
 		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintf(w, "La transacción con el id %v no existe", partialTransaction.Id)
+		fmt.Fprintf(w, "La transacción con el id %v no existe", transactionId)
 		return
 	}
 	response, err := json.Marshal(modifiedTransaction)
 	if err != nil {
-		log.Fatal(err)
-		w.WriteHeader(http.StatusInternalServerError)
+		utils.SendInternalServerError(err, w)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -256,7 +222,7 @@ func PatchTransaction(w http.ResponseWriter, r *http.Request, _ httprouter.Param
 }
 
 func DeleteLastTransaction(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	deletedTransactionId := IdResponse{
+	deletedTransactionId := types.IdResponse{
 		Id: -1,
 	}
 	db := database.ConnectDB()
@@ -264,15 +230,13 @@ func DeleteLastTransaction(w http.ResponseWriter, r *http.Request, _ httprouter.
 	query := "DELETE FROM transactions_with_balances WHERE id != 1 AND id in (SELECT id FROM transactions_with_balances ORDER BY id desc LIMIT 1) RETURNING id;"
 	rows, err := db.Query(query)
 	if err != nil {
-		log.Fatal(err)
-		w.WriteHeader(http.StatusInternalServerError)
+		utils.SendInternalServerError(err, w)
 		return
 	}
 	defer rows.Close()
 	for rows.Next() {
 		if err := rows.Scan(&deletedTransactionId.Id); err != nil {
-			log.Fatal(err)
-			w.WriteHeader(http.StatusInternalServerError)
+			utils.SendInternalServerError(err, w)
 			return
 		}
 	}
@@ -280,8 +244,7 @@ func DeleteLastTransaction(w http.ResponseWriter, r *http.Request, _ httprouter.
 	rollBackIdQuery := "SELECT setval('transactions_with_balances_id_seq', (SELECT last_value from transactions_with_balances_id_seq) - 1);"
 	_, err = db.Query(rollBackIdQuery)
 	if err != nil {
-		log.Fatal(err)
-		w.WriteHeader(http.StatusInternalServerError)
+		utils.SendInternalServerError(err, w)
 		return
 	}
 
@@ -294,15 +257,14 @@ func DeleteLastTransaction(w http.ResponseWriter, r *http.Request, _ httprouter.
 	w.Header().Set("Content-Type", "application/json")
 	response, err := json.Marshal(deletedTransactionId)
 	if err != nil {
-		log.Fatal(err)
-		w.WriteHeader(http.StatusInternalServerError)
+		utils.SendInternalServerError(err, w)
 		return
 	}
 	w.Write(response)
 }
 
 func GetLastTransactionId(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	lastTransactionId := IdResponse{
+	lastTransactionId := types.IdResponse{
 		Id: -1,
 	}
 	db := database.ConnectDB()
@@ -310,15 +272,13 @@ func GetLastTransactionId(w http.ResponseWriter, r *http.Request, _ httprouter.P
 	query := "SELECT id FROM transactions_with_balances ORDER BY id desc LIMIT 1;"
 	rows, err := db.Query(query)
 	if err != nil {
-		log.Fatal(err)
-		w.WriteHeader(http.StatusInternalServerError)
+		utils.SendInternalServerError(err, w)
 		return
 	}
 	defer rows.Close()
 	for rows.Next() {
 		if err := rows.Scan(&lastTransactionId.Id); err != nil {
-			log.Fatal(err)
-			w.WriteHeader(http.StatusInternalServerError)
+			utils.SendInternalServerError(err, w)
 			return
 		}
 	}
@@ -332,46 +292,41 @@ func GetLastTransactionId(w http.ResponseWriter, r *http.Request, _ httprouter.P
 	w.Header().Set("Content-Type", "application/json")
 	response, err := json.Marshal(lastTransactionId)
 	if err != nil {
-		log.Fatal(err)
-		w.WriteHeader(http.StatusInternalServerError)
+		utils.SendInternalServerError(err, w)
 		return
 	}
 	w.Write(response)
 }
 
 func UnexecuteLastTransaction(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	lastTransaction := TransactionWithBalance{}
+	lastTransaction := types.TransactionWithBalance{}
 	db := database.ConnectDB()
 	defer db.Close()
 	query := "SELECT * FROM transactions_with_balances ORDER BY id desc LIMIT 1;"
 	rows, err := db.Query(query)
 	if err != nil {
-		log.Fatal(err)
-		w.WriteHeader(http.StatusInternalServerError)
+		utils.SendInternalServerError(err, w)
 		return
 	}
 	defer rows.Close()
 	for rows.Next() {
 		if err := rows.Scan(&lastTransaction.Id, &lastTransaction.Type, &lastTransaction.Amount, &lastTransaction.Description, &lastTransaction.Balance, &lastTransaction.Actor, &lastTransaction.Executed, &lastTransaction.CreatedAt); err != nil {
-			log.Fatal(err)
-			w.WriteHeader(http.StatusInternalServerError)
+			utils.SendInternalServerError(err, w)
 			return
 		}
 	}
 
-	newPendingTransaction := PendingTransaction{}
+	newPendingTransaction := types.PendingTransaction{}
 	insertPendingTransactionQuery := fmt.Sprintf("INSERT INTO pending_transactions(type, amount, description, actor, created_at) VALUES ('%v', '%v', '%v', '%v', '%v') RETURNING id, type, amount, description, actor, created_at;", lastTransaction.Type, lastTransaction.Amount, lastTransaction.Description, lastTransaction.Actor, lastTransaction.CreatedAt)
 	rows, err = db.Query(insertPendingTransactionQuery)
 	if err != nil {
-		log.Fatal(err)
-		w.WriteHeader(http.StatusInternalServerError)
+		utils.SendInternalServerError(err, w)
 		return
 	}
 	defer rows.Close()
 	for rows.Next() {
 		if err := rows.Scan(&newPendingTransaction.Id, &newPendingTransaction.Type, &newPendingTransaction.Amount, &newPendingTransaction.Description, &newPendingTransaction.Actor, &newPendingTransaction.CreatedAt); err != nil {
-			log.Fatal(err)
-			w.WriteHeader(http.StatusInternalServerError)
+			utils.SendInternalServerError(err, w)
 			return
 		}
 	}
@@ -379,23 +334,20 @@ func UnexecuteLastTransaction(w http.ResponseWriter, r *http.Request, _ httprout
 	deleteQuery := "DELETE FROM transactions_with_balances WHERE id != 1 AND id in (SELECT id FROM transactions_with_balances ORDER BY id desc LIMIT 1) RETURNING id;"
 	_, err = db.Query(deleteQuery)
 	if err != nil {
-		log.Fatal(err)
-		w.WriteHeader(http.StatusInternalServerError)
+		utils.SendInternalServerError(err, w)
 		return
 	}
 
 	rollBackIdQuery := "SELECT setval('transactions_with_balances_id_seq', (SELECT last_value from transactions_with_balances_id_seq) - 1);"
 	_, err = db.Query(rollBackIdQuery)
 	if err != nil {
-		log.Fatal(err)
-		w.WriteHeader(http.StatusInternalServerError)
+		utils.SendInternalServerError(err, w)
 		return
 	}
 
 	response, err := json.Marshal(newPendingTransaction)
 	if err != nil {
-		log.Fatal(err)
-		w.WriteHeader(http.StatusInternalServerError)
+		utils.SendInternalServerError(err, w)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")

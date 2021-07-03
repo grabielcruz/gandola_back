@@ -4,61 +4,37 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"strconv"
 
 	"example.com/backend_gandola_soft/database"
-	"example.com/backend_gandola_soft/transactions"
+	"example.com/backend_gandola_soft/types"
+	"example.com/backend_gandola_soft/utils"
 	"github.com/julienschmidt/httprouter"
 )
 
-type PendingTransaction struct {
-	Id          int
-	Type        string
-	Amount      float32
-	Description string
-	Actor       int
-	CreatedAt   string
-}
-
-type PartialPendingTransaction struct {
-	Id          int
-	Type        string
-	Amount      float32
-	Description string
-	Actor       int
-}
-
-type IdResponse struct {
-	Id int
-}
-
 func GetPendingTransactions(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	transactions := []PendingTransaction{}
+	transactions := []types.PendingTransaction{}
 	db := database.ConnectDB()
 	defer db.Close()
 	rows, err := db.Query("SELECT * FROM pending_transactions ORDER BY id ASC;")
 	if err != nil {
-		log.Fatal(err)
-		w.WriteHeader(http.StatusInternalServerError)
+		utils.SendInternalServerError(err, w)
 		return
 	}
 	defer rows.Close()
 	for rows.Next() {
-		transaction := PendingTransaction{}
+		transaction := types.PendingTransaction{}
 		err = rows.Scan(&transaction.Id, &transaction.Type, &transaction.Amount, &transaction.Description, &transaction.Actor, &transaction.CreatedAt)
 		if err != nil {
-			log.Fatal(err)
-			w.WriteHeader(http.StatusInternalServerError)
+			utils.SendInternalServerError(err, w)
 			return
 		}
 		transactions = append(transactions, transaction)
 	}
 	json_transactions, err := json.Marshal(transactions)
 	if err != nil {
-		log.Fatal(err)
-		w.WriteHeader(http.StatusInternalServerError)
+		utils.SendInternalServerError(err, w)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -66,7 +42,7 @@ func GetPendingTransactions(w http.ResponseWriter, r *http.Request, _ httprouter
 }
 
 func CreatePendingTransaction(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	transaction := PartialPendingTransaction{}
+	transaction := types.PartialPendingTransaction{}
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -112,15 +88,13 @@ func CreatePendingTransaction(w http.ResponseWriter, r *http.Request, _ httprout
 	getActorIdQuery := fmt.Sprintf("SELECT id FROM actors WHERE id=%v", transaction.Actor)
 	actorIdRow, err := db.Query(getActorIdQuery)
 	if err != nil {
-		log.Fatal(err)
-		w.WriteHeader(http.StatusInternalServerError)
+		utils.SendInternalServerError(err, w)
 		return
 	}
 	defer actorIdRow.Close()
 	for actorIdRow.Next() {
 		if err := actorIdRow.Scan(&actorId); err != nil {
-			log.Fatal(err)
-			w.WriteHeader(http.StatusInternalServerError)
+			utils.SendInternalServerError(err, w)
 			return
 		}
 	}
@@ -131,35 +105,38 @@ func CreatePendingTransaction(w http.ResponseWriter, r *http.Request, _ httprout
 		return
 	}
 
-	insertedTransaction := PendingTransaction{}
+	insertedTransaction := types.PendingTransaction{}
 	insertTransactionQuery := fmt.Sprintf("INSERT INTO pending_transactions(type, amount, description, actor) VALUES ('%v', '%v', '%v', '%v') RETURNING id, type, amount, description, actor, created_at;", transaction.Type, transaction.Amount, transaction.Description, transaction.Actor)
 
 	rows, err := db.Query(insertTransactionQuery)
 	if err != nil {
-		log.Fatal(err)
-		w.WriteHeader(http.StatusInternalServerError)
+		utils.SendInternalServerError(err, w)
 		return
 	}
 	for rows.Next() {
 		err = rows.Scan(&insertedTransaction.Id, &insertedTransaction.Type, &insertedTransaction.Amount, &insertedTransaction.Description, &insertedTransaction.Actor, &insertedTransaction.CreatedAt)
 		if err != nil {
-			log.Fatal(err)
-			w.WriteHeader(http.StatusInternalServerError)
+			utils.SendInternalServerError(err, w)
 			return
 		}
 	}
 	response, err := json.Marshal(insertedTransaction)
 	if err != nil {
-		log.Fatal(err)
-		w.WriteHeader(http.StatusInternalServerError)
+		utils.SendInternalServerError(err, w)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(response)
 }
 
-func PatchPendingTransaction(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	newPendingTransaction := PendingTransaction{}
+func PatchPendingTransaction(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	requestedId := ps.ByName("id")
+	pendingTransactionsId, err := strconv.Atoi(requestedId)
+	if err != nil {
+		utils.SendInternalServerError(err, w)
+		return
+	}
+	newPendingTransaction := types.PendingTransaction{}
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -171,7 +148,7 @@ func PatchPendingTransaction(w http.ResponseWriter, r *http.Request, _ httproute
 		fmt.Fprintf(w, "La data enviada no corresponde con una transacción pendiente parcial")
 		return
 	}
-	if newPendingTransaction.Id <= 1 {
+	if pendingTransactionsId <= 1 {
 		w.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintf(w, "No puede modificar la transacción pendiente cero")
 		return
@@ -204,15 +181,13 @@ func PatchPendingTransaction(w http.ResponseWriter, r *http.Request, _ httproute
 	getActorIdQuery := fmt.Sprintf("SELECT id FROM actors WHERE id=%v", newPendingTransaction.Actor)
 	actorIdRow, err := db.Query(getActorIdQuery)
 	if err != nil {
-		log.Fatal(err)
-		w.WriteHeader(http.StatusInternalServerError)
+		utils.SendInternalServerError(err, w)
 		return
 	}
 	defer actorIdRow.Close()
 	for actorIdRow.Next() {
 		if err := actorIdRow.Scan(&actorId); err != nil {
-			log.Fatal(err)
-			w.WriteHeader(http.StatusInternalServerError)
+			utils.SendInternalServerError(err, w)
 			return
 		}
 	}
@@ -223,32 +198,29 @@ func PatchPendingTransaction(w http.ResponseWriter, r *http.Request, _ httproute
 		return
 	}
 
-	query := fmt.Sprintf("UPDATE pending_transactions SET type='%v', amount='%v', description='%v', actor='%v' WHERE id='%v' RETURNING id, type, amount, description, actor, created_at;", newPendingTransaction.Type, newPendingTransaction.Amount, newPendingTransaction.Description, newPendingTransaction.Actor, newPendingTransaction.Id)
-	modifiedPendingTransaction := PendingTransaction{}
+	query := fmt.Sprintf("UPDATE pending_transactions SET type='%v', amount='%v', description='%v', actor='%v' WHERE id='%v' RETURNING id, type, amount, description, actor, created_at;", newPendingTransaction.Type, newPendingTransaction.Amount, newPendingTransaction.Description, newPendingTransaction.Actor, pendingTransactionsId)
+	modifiedPendingTransaction := types.PendingTransaction{}
 	rows, err := db.Query(query)
 	if err != nil {
-		log.Fatal(err)
-		w.WriteHeader(http.StatusInternalServerError)
+		utils.SendInternalServerError(err, w)
 		return
 	}
 	defer rows.Close()
 	for rows.Next() {
 		err = rows.Scan(&modifiedPendingTransaction.Id, &modifiedPendingTransaction.Type, &modifiedPendingTransaction.Amount, &modifiedPendingTransaction.Description, &modifiedPendingTransaction.Actor, &modifiedPendingTransaction.CreatedAt)
 		if err != nil {
-			log.Fatal(err)
-			w.WriteHeader(http.StatusInternalServerError)
+			utils.SendInternalServerError(err, w)
 			return
 		}
 	}
 	if modifiedPendingTransaction.Id == 0 {
 		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintf(w, "La transacción pendiente con el id %v no existe", newPendingTransaction.Id)
+		fmt.Fprintf(w, "La transacción pendiente con el id %v no existe", pendingTransactionsId)
 		return
 	}
 	response, err := json.Marshal(modifiedPendingTransaction)
 	if err != nil {
-		log.Fatal(err)
-		w.WriteHeader(http.StatusInternalServerError)
+		utils.SendInternalServerError(err, w)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -264,8 +236,7 @@ func DeletePendingTransaction(w http.ResponseWriter, r *http.Request, ps httprou
 	}
 	id, err := strconv.Atoi(requestedId)
 	if err != nil {
-		log.Fatal(err)
-		w.WriteHeader(http.StatusInternalServerError)
+		utils.SendInternalServerError(err, w)
 		return
 	}
 	if id <= 1 {
@@ -278,17 +249,15 @@ func DeletePendingTransaction(w http.ResponseWriter, r *http.Request, ps httprou
 	query := fmt.Sprintf("DELETE FROM pending_transactions WHERE id='%v' RETURNING id;", id)
 	rows, err := db.Query(query)
 	if err != nil {
-		log.Fatal(err)
-		w.WriteHeader(http.StatusInternalServerError)
+		utils.SendInternalServerError(err, w)
 		return
 	}
 	defer rows.Close()
-	deletedId := IdResponse{}
+	deletedId := types.IdResponse{}
 	for rows.Next() {
 		err = rows.Scan(&deletedId.Id)
 		if err != nil {
-			log.Fatal(err)
-			w.WriteHeader(http.StatusInternalServerError)
+			utils.SendInternalServerError(err, w)
 			return
 		}
 	}
@@ -301,8 +270,7 @@ func DeletePendingTransaction(w http.ResponseWriter, r *http.Request, ps httprou
 	w.Header().Set("Content-Type", "application/json")
 	response, err := json.Marshal(deletedId)
 	if err != nil {
-		log.Fatal(err)
-		w.WriteHeader(http.StatusInternalServerError)
+		utils.SendInternalServerError(err, w)
 		return
 	}
 	w.Write(response)
@@ -317,8 +285,7 @@ func ExecutePendingTransaction(w http.ResponseWriter, r *http.Request, ps httpro
 	}
 	id, err := strconv.Atoi(requestedId)
 	if err != nil {
-		log.Fatal(err)
-		w.WriteHeader(http.StatusInternalServerError)
+		utils.SendInternalServerError(err, w)
 		return
 	}
 	if id <= 1 {
@@ -331,16 +298,14 @@ func ExecutePendingTransaction(w http.ResponseWriter, r *http.Request, ps httpro
 	query := fmt.Sprintf("SELECT * FROM pending_transactions WHERE id='%v';", requestedId)
 	rows, err := db.Query(query)
 	if err != nil {
-		log.Fatal(err)
-		w.WriteHeader(http.StatusInternalServerError)
+		utils.SendInternalServerError(err, w)
 		return
 	}
-	pendingTransaction := PendingTransaction{}
+	pendingTransaction := types.PendingTransaction{}
 	for rows.Next() {
 		err = rows.Scan(&pendingTransaction.Id, &pendingTransaction.Type, &pendingTransaction.Amount, &pendingTransaction.Description, &pendingTransaction.Actor, &pendingTransaction.CreatedAt)
 		if err != nil {
-			log.Fatal(err)
-			w.WriteHeader(http.StatusInternalServerError)
+			utils.SendInternalServerError(err, w)
 			return
 		}
 	}
@@ -355,15 +320,13 @@ func ExecutePendingTransaction(w http.ResponseWriter, r *http.Request, ps httpro
 	getLastBalanceQuery := "SELECT balance FROM transactions_with_balances ORDER BY id desc LIMIT 1;"
 	lastTransactionRow, err := db.Query(getLastBalanceQuery)
 	if err != nil {
-		log.Fatal(err)
-		w.WriteHeader(http.StatusInternalServerError)
+		utils.SendInternalServerError(err, w)
 		return
 	}
 	defer lastTransactionRow.Close()
 	for lastTransactionRow.Next() {
 		if err := lastTransactionRow.Scan(&lastBalance); err != nil {
-			log.Fatal(err)
-			w.WriteHeader(http.StatusInternalServerError)
+			utils.SendInternalServerError(err, w)
 			return
 		}
 	}
@@ -379,21 +342,19 @@ func ExecutePendingTransaction(w http.ResponseWriter, r *http.Request, ps httpro
 		}
 	}
 
-	insertedTransaction := transactions.TransactionWithBalance{}
+	insertedTransaction := types.TransactionWithBalance{}
 	insertTransactionQuery := fmt.Sprintf("INSERT INTO transactions_with_balances(type, amount, description, balance, actor, created_at) VALUES ('%v', '%v', '%v', '%v', '%v', '%v') RETURNING id, type, amount, description, balance, actor, executed, created_at;", pendingTransaction.Type, pendingTransaction.Amount, pendingTransaction.Description, newBalance, pendingTransaction.Actor, pendingTransaction.CreatedAt)
 
 	rows, err = db.Query(insertTransactionQuery)
 	if err != nil {
-		log.Fatal(err)
-		w.WriteHeader(http.StatusInternalServerError)
+		utils.SendInternalServerError(err, w)
 		return
 	}
 	defer rows.Close()
 
 	for rows.Next() {
 		if err := rows.Scan(&insertedTransaction.Id, &insertedTransaction.Type, &insertedTransaction.Amount, &insertedTransaction.Description, &insertedTransaction.Balance, &insertedTransaction.Actor, &insertedTransaction.Executed, &insertedTransaction.CreatedAt); err != nil {
-			log.Fatal(err)
-			w.WriteHeader(http.StatusInternalServerError)
+			utils.SendInternalServerError(err, w)
 			return
 		}
 	}
@@ -401,15 +362,13 @@ func ExecutePendingTransaction(w http.ResponseWriter, r *http.Request, ps httpro
 	deleteQuery := fmt.Sprintf("DELETE FROM pending_transactions WHERE id='%v' RETURNING id;", requestedId)
 	_, err = db.Query(deleteQuery)
 	if err != nil {
-		log.Fatal(err)
-		w.WriteHeader(http.StatusInternalServerError)
+		utils.SendInternalServerError(err, w)
 		return
 	}
 
 	response, err := json.Marshal(insertedTransaction)
 	if err != nil {
-		log.Fatal(err)
-		w.WriteHeader(http.StatusInternalServerError)
+		utils.SendInternalServerError(err, w)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -417,7 +376,7 @@ func ExecutePendingTransaction(w http.ResponseWriter, r *http.Request, ps httpro
 }
 
 func GetLastTransactionId(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	lastPendingTransactionsId := IdResponse{
+	lastPendingTransactionsId := types.IdResponse{
 		Id: -1,
 	}
 	db := database.ConnectDB()
@@ -425,15 +384,13 @@ func GetLastTransactionId(w http.ResponseWriter, r *http.Request, _ httprouter.P
 	query := "SELECT id FROM pending_transactions ORDER BY id desc LIMIT 1;"
 	rows, err := db.Query(query)
 	if err != nil {
-		log.Fatal(err)
-		w.WriteHeader(http.StatusInternalServerError)
+		utils.SendInternalServerError(err, w)
 		return
 	}
 	defer rows.Close()
 	for rows.Next() {
 		if err := rows.Scan(&lastPendingTransactionsId.Id); err != nil {
-			log.Fatal(err)
-			w.WriteHeader(http.StatusInternalServerError)
+			utils.SendInternalServerError(err, w)
 			return
 		}
 	}
@@ -447,8 +404,7 @@ func GetLastTransactionId(w http.ResponseWriter, r *http.Request, _ httprouter.P
 	w.Header().Set("Content-Type", "application/json")
 	response, err := json.Marshal(lastPendingTransactionsId)
 	if err != nil {
-		log.Fatal(err)
-		w.WriteHeader(http.StatusInternalServerError)
+		utils.SendInternalServerError(err, w)
 		return
 	}
 	w.Write(response)

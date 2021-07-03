@@ -4,55 +4,37 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"strconv"
 
 	"example.com/backend_gandola_soft/database"
+	"example.com/backend_gandola_soft/types"
+	"example.com/backend_gandola_soft/utils"
 	"github.com/julienschmidt/httprouter"
 )
 
-type Actor struct {
-	Id          int
-	Name        string
-	Description string
-	CreatedAt   string
-}
-
-type PartialActor struct {
-	Name        string
-	Description string
-}
-
-type IdResponse struct {
-	Id int
-}
-
 func GetActors(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	actors := []Actor{}
+	actors := []types.Actor{}
 	db := database.ConnectDB()
 	defer db.Close()
 	rows, err := db.Query("SELECT * FROM actors ORDER BY id ASC;")
 	if err != nil {
-		log.Fatal(err)
-		w.WriteHeader(http.StatusInternalServerError)
+		utils.SendInternalServerError(err, w)
 		return
 	}
 	defer rows.Close()
 	for rows.Next() {
-		actor := Actor{}
+		actor := types.Actor{}
 		err = rows.Scan(&actor.Id, &actor.Name, &actor.Description, &actor.CreatedAt)
 		if err != nil {
-			log.Fatal(err)
-			w.WriteHeader(http.StatusInternalServerError)
+			utils.SendInternalServerError(err, w)
 			return
 		}
 		actors = append(actors, actor)
 	}
 	json_actors, err := json.Marshal(actors)
 	if err != nil {
-		log.Fatal(err)
-		w.WriteHeader(http.StatusInternalServerError)
+		utils.SendInternalServerError(err, w)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -60,7 +42,7 @@ func GetActors(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 }
 
 func CreateActor(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	actor := Actor{}
+	actor := types.Actor{}
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -92,25 +74,28 @@ func CreateActor(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	if err != nil {
 		if err.Error() == "pq: duplicate key value violates unique constraint \"actors_name_key\"" {
 			w.WriteHeader(http.StatusBadRequest)
+			rollBackIdQuery := "SELECT setval('actors_id_seq', (SELECT last_value from actors_id_seq) - 1);"
+			_, err = db.Query(rollBackIdQuery)
+			if err != nil {
+				utils.SendInternalServerError(err, w)
+				return
+			}
 			fmt.Fprint(w, "El nombre ya ha sido utilizado")
 			return
 		}
-		log.Fatal(err)
-		w.WriteHeader(http.StatusInternalServerError)
+		utils.SendInternalServerError(err, w)
 		return
 	}
 	for rows.Next() {
 		err = rows.Scan(&actor.Id, &actor.Name, &actor.Description, &actor.CreatedAt)
 		if err != nil {
-			log.Fatal(err)
-			w.WriteHeader(http.StatusInternalServerError)
+			utils.SendInternalServerError(err, w)
 			return
 		}
 	}
 	response, err := json.Marshal(actor)
 	if err != nil {
-		log.Fatal(err)
-		w.WriteHeader(http.StatusInternalServerError)
+		utils.SendInternalServerError(err, w)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -119,7 +104,7 @@ func CreateActor(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 
 func PatchActor(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	actorId := ps.ByName("id")
-	partialActor := PartialActor{}
+	partialActor := types.PartialActor{}
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -146,7 +131,7 @@ func PatchActor(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	db := database.ConnectDB()
 	defer db.Close()
 
-	var updatedActor Actor
+	var updatedActor types.Actor
 	patchActorQuery := fmt.Sprintf("UPDATE actors SET name='%v', description='%v' WHERE id='%v' RETURNING id, name, description, created_at;", partialActor.Name, partialActor.Description, actorId)
 	actorRow, err := db.Query(patchActorQuery)
 	if err != nil {
@@ -155,18 +140,14 @@ func PatchActor(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 			fmt.Fprint(w, "El nombre ya ha sido utilizado")
 			return
 		}
-		log.Fatal(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(w, "Error del servidor")
+		utils.SendInternalServerError(err, w)
 		return
 	}
 	defer actorRow.Close()
 	for actorRow.Next() {
 		err = actorRow.Scan(&updatedActor.Id, &updatedActor.Name, &updatedActor.Description, &updatedActor.CreatedAt)
 		if err != nil {
-			log.Fatal(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			fmt.Fprintf(w, "Error del servidor")
+			utils.SendInternalServerError(err, w)
 		}
 	}
 
@@ -178,52 +159,44 @@ func PatchActor(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 
 	response, err := json.Marshal(updatedActor)
 	if err != nil {
-		log.Fatal(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(w, "Error del servidor")
+		utils.SendInternalServerError(err, w)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(response)
 }
 
-func GetLastActorId(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	var lastActorId IdResponse
+func GetLastActor(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	var lastActor types.Actor
 
 	db := database.ConnectDB()
 	defer db.Close()
-	query := "SELECT id FROM actors ORDER BY id DESC LIMIT 1;"
+	query := "SELECT * FROM actors ORDER BY id DESC LIMIT 1;"
 	rows, err := db.Query(query)
 	if err != nil {
-		log.Fatal(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(w, "Error del servidor")
+		utils.SendInternalServerError(err, w)
 		return
 	}
 
 	defer rows.Close()
 	for rows.Next() {
-		err = rows.Scan(&lastActorId.Id)
+		err = rows.Scan(&lastActor.Id, &lastActor.Name, &lastActor.Description, &lastActor.CreatedAt)
 		if err != nil {
-			log.Fatal(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			fmt.Fprintf(w, "Error del servidor")
+			utils.SendInternalServerError(err, w)
 			return
 		}
 	}
 
-	if lastActorId.Id == 0 {
+	if lastActor.Id == 0 {
 		w.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintf(w, "No existen más actores")
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	response, err := json.Marshal(lastActorId)
+	response, err := json.Marshal(lastActor)
 	if err != nil {
-		log.Fatal(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(w, "Error del servidor")
+		utils.SendInternalServerError(err, w)
 		return
 	}
 	w.Write(response)
@@ -238,9 +211,7 @@ func DeleteActor(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	}
 	actorId, err := strconv.Atoi(requestedId)
 	if err != nil {
-		log.Fatal(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(w, "Error del servidor")
+		utils.SendInternalServerError(err, w)
 		return
 	}
 	if actorId <= 1 {
@@ -258,21 +229,17 @@ func DeleteActor(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 			fmt.Fprintf(w, "El actor que intenta borrar tiene una o mas transacciones asociadas por lo que no puede ser eliminado")
 			return
 		}
-		log.Fatal(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(w, "Error del servidor")
+		utils.SendInternalServerError(err, w)
 		return
 	}
 
 	defer rows.Close()
-	deletedId := IdResponse{}
+	deletedId := types.IdResponse{}
 	
 	for rows.Next() {
 		err = rows.Scan(&deletedId.Id)
 		if err != nil {
-			log.Fatal(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			fmt.Fprintf(w, "Error del servidor")
+			utils.SendInternalServerError(err, w)
 		return
 		}
 	}
@@ -285,8 +252,7 @@ func DeleteActor(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	w.Header().Set("Content-Type", "application/json")
 	response, err := json.Marshal(deletedId)
 	if err != nil {
-		log.Fatal(err)
-		w.WriteHeader(http.StatusInternalServerError)
+		utils.SendInternalServerError(err, w)
 		return
 	}
 	w.Write(response)

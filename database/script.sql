@@ -4,12 +4,12 @@ DROP DATABASE gandola_soft;
 CREATE DATABASE gandola_soft;
 \c gandola_soft;
 
-CREATE TYPE transaction_type AS ENUM ('output', 'input', 'zero');
+CREATE TYPE transaction_type AS ENUM ('output', 'input');
 
 CREATE TABLE actors (
   id SERIAL PRIMARY KEY,
-  name text NOT NULL UNIQUE,
-  description text NOT NULL,
+  name TEXT NOT NULL UNIQUE,
+  description TEXT NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -27,7 +27,7 @@ CREATE TABLE transactions_with_balances (
 );
 
 INSERT INTO transactions_with_balances (type, amount, description, balance, actor)
-  VALUES ('zero', '0', 'transaction zero', '0', '1');
+  VALUES ('input', '0', 'transaction zero', '0', '1');
 
 CREATE TABLE pending_transactions (
   id SERIAL PRIMARY KEY,
@@ -40,3 +40,30 @@ CREATE TABLE pending_transactions (
 
 INSERT INTO pending_transactions (type, amount, description, actor) 
   VALUES ('zero', '0', 'pending transaction zero', '1');
+
+CREATE TABLE bills (
+  id TEXT PRIMARY KEY,
+  url TEXT NOT NULL,
+  date TIME WITH TIME ZONE DEFAULT CURRENT_TIME,
+  actor INT REFERENCES actors(id) ON DELETE RESTRICT NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE trips (
+  id SERIAL PRIMARY KEY,
+  date TIME WITH TIME ZONE DEFAULT CURRENT_TIME,
+  origin TEXT NOT NULL,
+  destination TEXT NOT NULL,
+  cargo TEXT NOT NULL,
+  driver TEXT NOT NULL,
+  truck TEXT NOT NULL,
+  bill TEXT REFERENCES bills(id) ON DELETE RESTRICT,
+  notes TEXT 
+);
+
+CREATE TABLE docs (
+  id SERIAL PRIMARY KEY,
+  description TEXT NOT NULL,
+  url TEXT NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
