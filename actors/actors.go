@@ -111,6 +111,21 @@ func PatchActor(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		fmt.Fprintf(w, "No se pudo leer el cuerpo de la petición")
 		return
 	}
+	actorIdNumber, err := strconv.Atoi(actorId)
+	if err != nil {
+		utils.SendInternalServerError(err, w)
+		return
+	}
+	if actorIdNumber <= 0 {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(w, "Id de actor no válido")
+		return
+	}
+	if actorIdNumber == 1 {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(w, "No puede modificar el actor externo")
+		return
+	}
 	err = json.Unmarshal(body, &partialActor)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -148,6 +163,7 @@ func PatchActor(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		err = actorRow.Scan(&updatedActor.Id, &updatedActor.Name, &updatedActor.Description, &updatedActor.IsCompany, &updatedActor.CreatedAt)
 		if err != nil {
 			utils.SendInternalServerError(err, w)
+			return
 		}
 	}
 
@@ -214,9 +230,9 @@ func DeleteActor(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		utils.SendInternalServerError(err, w)
 		return
 	}
-	if actorId <= 1 {
+	if actorId <= 0 {
 		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintf(w, "No puede borrar el actor externo")
+		fmt.Fprintf(w, "Id de actor no válido")
 		return
 	}
 	db := database.ConnectDB()

@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strconv"
+	"time"
 
 	"example.com/backend_gandola_soft/database"
 	"example.com/backend_gandola_soft/types"
@@ -14,6 +15,7 @@ import (
 )
 
 func Index(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	time.Sleep(5 * time.Second)
 	fmt.Fprintf(w, "Server working")
 }
 

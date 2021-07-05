@@ -59,6 +59,7 @@ CREATE TABLE trips (
   driver TEXT NOT NULL,
   truck TEXT NOT NULL,
   bill TEXT REFERENCES trip_bills(id) ON DELETE RESTRICT,
+  support TEXT,
   notes TEXT 
 );
 
