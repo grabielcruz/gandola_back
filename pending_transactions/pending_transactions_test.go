@@ -58,7 +58,9 @@ func TestCreatePendingTransaction(t *testing.T) {
     "Type": "%v",
     "Amount": %v,
     "Description": "%v",
-		"Actor": 1
+		"Actor": {
+			"Id": 1
+		}
   }
 	`, transactionType, transactionAmount, transactionDescription)
 	transactionBody := strings.NewReader(bodyString)
@@ -108,7 +110,9 @@ func TestCreateTransactionWithoutType(t *testing.T) {
     "Type": "%v",
     "Amount": %v,
     "Description": "%v",
-		"Actor": 1
+		"Actor": {
+			"Id": 1
+		}
   }
 	`, transactionType, transactionAmount, transactionDescription)
 	transactionBody := strings.NewReader(bodyString)
@@ -148,7 +152,9 @@ func TestCreatePendingTransactionWithWrongType(t *testing.T) {
     "Type": "%v",
     "Amount": %v,
     "Description": "%v",
-		"Actor": 1
+		"Actor": {
+			"Id": 1
+		}
   }
 	`, transactionType, transactionAmount, transactionDescription)
 	transactionBody := strings.NewReader(bodyString)
@@ -188,7 +194,9 @@ func TestCreatePendingTransactionWithoutAmount(t *testing.T) {
     "Type": "%v",
     "Amount": %v,
     "Description": "%v",
-		"Actor": 1
+		"Actor": {
+			"Id": 1
+		}
   }
 	`, transactionType, transactionAmount, transactionDescription)
 	transactionBody := strings.NewReader(bodyString)
@@ -228,7 +236,9 @@ func TestCreatePendingTransactionWithoutDescription(t *testing.T) {
     "Type": "%v",
     "Amount": %v,
     "Description": "%v",
-		"Actor": 1
+		"Actor": {
+			"Id": 1
+		}
   }
 	`, transactionType, transactionAmount, transactionDescription)
 	transactionBody := strings.NewReader(bodyString)
@@ -268,7 +278,9 @@ func TestCreatePendingTransactionWithBadJson(t *testing.T) {
     "Type": "%v",
     "Amount": %v,
     "Description": "%v",
-		"Actor": 1,
+		"Actor": {
+			"Id": 1
+		},
   }
 	`, transactionType, transactionAmount, transactionDescription)
 	transactionBody := strings.NewReader(bodyString)
@@ -308,7 +320,9 @@ func TestCreatePendingTransactionWithNonExistingActor(t *testing.T) {
     "Type": "%v",
     "Amount": %v,
     "Description": "%v",
-		"Actor": 9999
+		"Actor": {
+			"Id": 9999
+		}
   }
 	`, transactionType, transactionAmount, transactionDescription)
 	transactionBody := strings.NewReader(bodyString)
@@ -376,7 +390,9 @@ func TestPatchPendingTransaction(t *testing.T) {
 			"Type": "%v",
 			"Amount": %v,
 			"Description": "%v",
-			"Actor": 1
+			"Actor": {
+				"Id": 1
+			}
 		}
 	`, transactionType, amount, description)
 	transactionBody := strings.NewReader(bodyString)
@@ -462,9 +478,11 @@ func TestPatchPendingTransactionEmptyDescription(t *testing.T) {
 			"Type": "%v",
 			"Amount": %v,
 			"Description": "%v",
-			"Actor": 1
+			"Actor": {
+				"Id": 1
+			}
 		}
-	`,transactionType, amount, description)
+	`, transactionType, amount, description)
 	transactionBody := strings.NewReader(bodyString)
 	urlRequest := fmt.Sprintf("/pending_transactions/%v", id)
 	req2, err := http.NewRequest("PATCH", urlRequest, transactionBody)
@@ -533,7 +551,9 @@ func TestPatchPendingTransactionBadType(t *testing.T) {
 			"Type": "%v",
 			"Amount": %v,
 			"Description": "%v",
-			"Actor": 1
+			"Actor": {
+				"Id": 1
+			}
 		}
 	`, transactionType, amount, description)
 	transactionBody := strings.NewReader(bodyString)
@@ -604,7 +624,9 @@ func TestPatchPendingTransactionAmountZeroOrLess(t *testing.T) {
 			"Type": "%v",
 			"Amount": %v,
 			"Description": "%v",
-			"Actor": 1
+			"Actor": {
+				"Id": 1
+			}
 		}
 	`, transactionType, amount, description)
 	transactionBody := strings.NewReader(bodyString)
@@ -648,7 +670,9 @@ func TestPatchPendingTransactionZero(t *testing.T) {
 			"Type": "%v",
 			"Amount": %v,
 			"Description": "%v",
-			"Actor": 1
+			"Actor": {
+				"Id": 1
+			}
 		}
 	`, transactionType, amount, description)
 	transactionBody := strings.NewReader(bodyString)
@@ -692,7 +716,9 @@ func TestPatchPendingTransactionBadJson(t *testing.T) {
 			"Type": "%v",
 			"Amount": %v,
 			"Description": "%v",
-			"Actor": 1,
+			"Actor": {
+				"Id": 1
+			},
 		}
 	`, transactionType, amount, description)
 	transactionBody := strings.NewReader(bodyString)
@@ -736,7 +762,9 @@ func TestPatchPendingTransactionNonExistingId(t *testing.T) {
 			"Type": "%v",
 			"Amount": %v,
 			"Description": "%v",
-			"Actor": 1
+			"Actor": {
+				"Id": 1
+			}
 		}
 	`, transactionType, amount, description)
 	transactionBody := strings.NewReader(bodyString)
@@ -780,7 +808,9 @@ func TestPatchPendingTransactionNonExistingActor(t *testing.T) {
 			"Type": "%v",
 			"Amount": %v,
 			"Description": "%v",
-			"Actor": 9999
+			"Actor": {
+				"Id": 9999
+			}
 		}
 	`, transactionType, amount, description)
 	transactionBody := strings.NewReader(bodyString)
@@ -1006,7 +1036,9 @@ func TestExecutePendingTransaction(t *testing.T) {
 		"Type": "%v",
 		"Amount": %v,
 		"Description": "%v",
-		"Actor": 1
+		"Actor": {
+			"Id": 1
+		}
 	}
 	`, transactionType, transactionAmount, transactionDescription)
 	transactionBody := strings.NewReader(bodyString)
@@ -1036,7 +1068,7 @@ func TestExecutePendingTransaction(t *testing.T) {
 
 	router.PUT("/pending_transactions/:id", ExecutePendingTransaction)
 	id := transactionResponse.Id
-	
+
 	urlRequest := fmt.Sprintf("/pending_transactions/%v", id)
 	req2, err := http.NewRequest("PUT", urlRequest, nil)
 	if err != nil {
@@ -1090,7 +1122,7 @@ func TestExecutePendingTransaction(t *testing.T) {
 	}
 
 	t.Log("testing IdResponse.Id after execution is less than IdResponse.Id before execution")
-	if (lastIdAfterExecution.Id >= transactionResponse.Id) {
+	if lastIdAfterExecution.Id >= transactionResponse.Id {
 		t.Errorf("lastIdAfterExecution = %v, lastIdBeforeExecution = %v", lastIdAfterExecution.Id, transactionResponse.Id)
 	}
 }

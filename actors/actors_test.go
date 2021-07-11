@@ -270,7 +270,7 @@ func TestCreateActorWithRepeatedName(t *testing.T) {
 	router := httprouter.New()
 	router.POST("/actors", CreateActor)
 
-	actorName := "externo"
+	actorName := "Externo"
 	actorDescription := "Any guy"
 	actorIsCompany := false
 	bodyString := fmt.Sprintf(`

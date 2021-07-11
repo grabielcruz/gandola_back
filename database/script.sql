@@ -14,7 +14,7 @@ CREATE TABLE actors (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
-INSERT INTO actors (name, description) VALUES ('externo', 'renglón para actor no registrado');
+INSERT INTO actors (name, description) VALUES ('Externo', 'renglón para actor no registrado');
 
 CREATE TABLE transactions_with_balances (
   id SERIAL PRIMARY KEY,

@@ -60,7 +60,7 @@ func TestGetTransactions(t *testing.T) {
 
 	t.Log("testing body for transaction zero")
 	id := 1
-	transaction_type := "zero"
+	transaction_type := "input"
 	amount := float32(0)
 	description := "transaction zero"
 	balance := float32(0)
@@ -77,20 +77,21 @@ func TestGetTransactions(t *testing.T) {
 		t.Error("Reponse body does not contain an array of type TransactionWithBalances")
 	}
 
-	if id != transactions[0].Id {
-		t.Errorf("Id = %v, want %v", id, transactions[0].Id)
+	lastIndex := len(transactions) - 1
+	if id != transactions[lastIndex].Id {
+		t.Errorf("Id = %v, want %v", id, transactions[lastIndex].Id)
 	}
-	if transaction_type != transactions[0].Type {
-		t.Errorf("Type = %v, want %v", transaction_type, transactions[0].Type)
+	if transaction_type != transactions[lastIndex].Type {
+		t.Errorf("Type = %v, want %v", transaction_type, transactions[lastIndex].Type)
 	}
-	if amount != transactions[0].Amount {
-		t.Errorf("Amount = %v, want %v", amount, transactions[0].Amount)
+	if amount != transactions[lastIndex].Amount {
+		t.Errorf("Amount = %v, want %v", amount, transactions[lastIndex].Amount)
 	}
-	if description != transactions[0].Description {
-		t.Errorf("Description = %v, want %v", description, transactions[0].Description)
+	if description != transactions[lastIndex].Description {
+		t.Errorf("Description = %v, want %v", description, transactions[lastIndex].Description)
 	}
-	if balance != transactions[0].Balance {
-		t.Errorf("Balance = %v, want %v", balance, transactions[0].Balance)
+	if balance != transactions[lastIndex].Balance {
+		t.Errorf("Balance = %v, want %v", balance, transactions[lastIndex].Balance)
 	}
 }
 
@@ -106,7 +107,9 @@ func TestCreateTransaction(t *testing.T) {
     "Type": "%v",
     "Amount": %v,
     "Description": "%v",
-		"Actor": 1
+		"Actor": {
+			"Id": 1
+		}
   }
 	`, transactionType, transactionAmount, transactionDescription)
 	transactionBody := strings.NewReader(bodyString)
@@ -156,7 +159,9 @@ func TestCreateTransactionWithoutType(t *testing.T) {
     "Type": "%v",
     "Amount": %v,
     "Description": "%v",
-		"Actor": 1
+		"Actor": {
+			"Id": 1
+		}
   }
 	`, transactionType, transactionAmount, transactionDescription)
 
@@ -197,7 +202,9 @@ func TestCreateTransactionWithWrongType(t *testing.T) {
     "Type": "%v",
     "Amount": %v,
     "Description": "%v",
-		"Actor": 1
+		"Actor": {
+			"Id": 1
+		}
   }
 	`, transactionType, transactionAmount, transactionDescription)
 
@@ -238,7 +245,9 @@ func TestCreateTransactionWithoutAmount(t *testing.T) {
     "Type": "%v",
     "Amount": %v,
     "Description": "%v",
-		"Actor": 1
+		"Actor": {
+			"Id": 1
+		}
   }
 	`, transactionType, transactionAmount, transactionDescription)
 
@@ -279,7 +288,9 @@ func TestCreateTransactionWithoutDescription(t *testing.T) {
     "Type": "%v",
     "Amount": %v,
     "Description": "%v",
-		"Actor": 1
+		"Actor": {
+			"Id": 1
+		}
   }
 	`, transactionType, transactionAmount, transactionDescription)
 
@@ -320,7 +331,9 @@ func TestCreateTransactionWithBadJson(t *testing.T) {
     "Type": "%v",
     "Amount": %v,
     "Description": "%v",
-		"Actor: 1,
+		"Actor": {
+			"Id": 1
+		},
   }
 	`, transactionType, transactionAmount, transactionDescription)
 
@@ -361,7 +374,9 @@ func TestCreateTransactionWithNonExistingActor(t *testing.T) {
     "Type": "%v",
     "Amount": %v,
     "Description": "%v",
-		"Actor": 9999
+		"Actor": {
+			"Id": 9999
+		}
   }
 	`, transactionType, transactionAmount, transactionDescription)
 
@@ -402,7 +417,9 @@ func TestCreateTransactionWithBalanceLessThanZero(t *testing.T) {
     "Type": "%v",
     "Amount": %v,
     "Description": "%v",
-		"Actor": 1
+		"Actor": {
+			"Id": 1
+		}
   }
 	`, transactionType, transactionAmount, transactionDescription)
 
@@ -801,7 +818,9 @@ func TestUnexecuteLastTransaction(t *testing.T) {
     "Type": "%v",
     "Amount": %v,
     "Description": "%v",
-		"Actor": 1
+		"Actor": {
+			"Id": 1
+		}
   }
 	`, transactionType, transactionAmount, transactionDescription)
 	transactionBody := strings.NewReader(bodyString)
@@ -886,6 +905,4 @@ func TestUnexecuteLastTransaction(t *testing.T) {
 	if (transactionResponse.Id - 1 != lastIdAfterUnexecution.Id) {
 		t.Errorf("lastIdBeforeUnexecution.Id = %v, lastIdAfterUnexecution.Id = %v", transactionResponse.Id, lastIdAfterUnexecution.Id)
 	}
-	
-
 }

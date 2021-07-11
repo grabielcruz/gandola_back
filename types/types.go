@@ -6,9 +6,12 @@ type TransactionWithBalance struct {
 	Amount      float32
 	Description string
 	Balance     float32
-	Actor       int
-	Executed    string
-	CreatedAt   string
+	Actor       struct {
+		Id   int
+		Name string
+	}
+	Executed  string
+	CreatedAt string
 }
 
 type PendingTransaction struct {
@@ -16,7 +19,10 @@ type PendingTransaction struct {
 	Type        string
 	Amount      float32
 	Description string
-	Actor       int
+	Actor       struct {
+		Id   int
+		Name string
+	}
 	CreatedAt   string
 }
 
@@ -35,7 +41,7 @@ type Actor struct {
 	Id          int
 	Name        string
 	Description string
-	IsCompany		bool
+	IsCompany   bool
 	CreatedAt   string
 }
 

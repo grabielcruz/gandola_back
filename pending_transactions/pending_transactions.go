@@ -17,7 +17,7 @@ func GetPendingTransactions(w http.ResponseWriter, r *http.Request, _ httprouter
 	transactions := []types.PendingTransaction{}
 	db := database.ConnectDB()
 	defer db.Close()
-	rows, err := db.Query("SELECT * FROM pending_transactions ORDER BY id ASC;")
+	rows, err := db.Query("SELECT pending_transactions.id, pending_transactions.type, pending_transactions.amount, pending_transactions.description, pending_transactions.created_at, actors.id, actors.name FROM pending_transactions, actors WHERE pending_transactions.actor = actors.id ORDER BY pending_transactions.id DESC;")
 	if err != nil {
 		utils.SendInternalServerError(err, w)
 		return
@@ -25,7 +25,7 @@ func GetPendingTransactions(w http.ResponseWriter, r *http.Request, _ httprouter
 	defer rows.Close()
 	for rows.Next() {
 		transaction := types.PendingTransaction{}
-		err = rows.Scan(&transaction.Id, &transaction.Type, &transaction.Amount, &transaction.Description, &transaction.Actor, &transaction.CreatedAt)
+		err = rows.Scan(&transaction.Id, &transaction.Type, &transaction.Amount, &transaction.Description, &transaction.CreatedAt, &transaction.Actor.Id, &transaction.Actor.Name)
 		if err != nil {
 			utils.SendInternalServerError(err, w)
 			return
@@ -42,7 +42,7 @@ func GetPendingTransactions(w http.ResponseWriter, r *http.Request, _ httprouter
 }
 
 func CreatePendingTransaction(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	transaction := types.PartialPendingTransaction{}
+	transaction := types.PendingTransaction{}
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -75,7 +75,7 @@ func CreatePendingTransaction(w http.ResponseWriter, r *http.Request, _ httprout
 		fmt.Fprintf(w, "La transacción pendiente debe poseer una descripción")
 		return
 	}
-	if transaction.Actor <= 0 {
+	if transaction.Actor.Id <= 0 {
 		w.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintf(w, "La transacción pendiente debe poseer un actor")
 		return
@@ -85,7 +85,7 @@ func CreatePendingTransaction(w http.ResponseWriter, r *http.Request, _ httprout
 	defer db.Close()
 
 	var actorId int
-	getActorIdQuery := fmt.Sprintf("SELECT id FROM actors WHERE id=%v", transaction.Actor)
+	getActorIdQuery := fmt.Sprintf("SELECT id FROM actors WHERE id='%v';", transaction.Actor.Id)
 	actorIdRow, err := db.Query(getActorIdQuery)
 	if err != nil {
 		utils.SendInternalServerError(err, w)
@@ -105,21 +105,38 @@ func CreatePendingTransaction(w http.ResponseWriter, r *http.Request, _ httprout
 		return
 	}
 
-	insertedTransaction := types.PendingTransaction{}
-	insertTransactionQuery := fmt.Sprintf("INSERT INTO pending_transactions(type, amount, description, actor) VALUES ('%v', '%v', '%v', '%v') RETURNING id, type, amount, description, actor, created_at;", transaction.Type, transaction.Amount, transaction.Description, transaction.Actor)
+	var insertedId int
+	insertTransactionQuery := fmt.Sprintf("INSERT INTO pending_transactions(type, amount, description, actor) VALUES ('%v', '%v', '%v', '%v') RETURNING id;", transaction.Type, transaction.Amount, transaction.Description, transaction.Actor.Id)
 
-	rows, err := db.Query(insertTransactionQuery)
+	rowsInsertedId, err := db.Query(insertTransactionQuery)
 	if err != nil {
 		utils.SendInternalServerError(err, w)
 		return
 	}
-	for rows.Next() {
-		err = rows.Scan(&insertedTransaction.Id, &insertedTransaction.Type, &insertedTransaction.Amount, &insertedTransaction.Description, &insertedTransaction.Actor, &insertedTransaction.CreatedAt)
+	for rowsInsertedId.Next() {
+		err = rowsInsertedId.Scan(&insertedId)
 		if err != nil {
 			utils.SendInternalServerError(err, w)
 			return
 		}
 	}
+
+	insertedTransaction := types.PendingTransaction{}
+	retrieveTransactionQuery := fmt.Sprintf("SELECT pending_transactions.id, pending_transactions.type, pending_transactions.amount, pending_transactions.description, pending_transactions.created_at, actors.id, actors.name FROM pending_transactions, actors WHERE pending_transactions.actor = actors.id AND pending_transactions.id = '%v';", insertedId)
+	rowsRetrievedTransaction, err := db.Query(retrieveTransactionQuery)
+	if err != nil {
+		utils.SendInternalServerError(err, w)
+		return
+	}
+	defer rowsRetrievedTransaction.Close()
+	for rowsRetrievedTransaction.Next() {
+		err = rowsRetrievedTransaction.Scan(&insertedTransaction.Id, &insertedTransaction.Type, &insertedTransaction.Amount, &insertedTransaction.Description, &insertedTransaction.CreatedAt, &insertedTransaction.Actor.Id, &insertedTransaction.Actor.Name)
+		if err != nil {
+			utils.SendInternalServerError(err, w)
+			return
+		}
+	}
+
 	response, err := json.Marshal(insertedTransaction)
 	if err != nil {
 		utils.SendInternalServerError(err, w)
@@ -168,7 +185,7 @@ func PatchPendingTransaction(w http.ResponseWriter, r *http.Request, ps httprout
 		fmt.Fprintf(w, "La transacción pendiente debe poseer un monto mayor que cero")
 		return
 	}
-	if newPendingTransaction.Actor <= 0 {
+	if newPendingTransaction.Actor.Id <= 0 {
 		w.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintf(w, "La transacción pendiente debe poseer un actor")
 		return
@@ -178,7 +195,7 @@ func PatchPendingTransaction(w http.ResponseWriter, r *http.Request, ps httprout
 	defer db.Close()
 
 	var actorId int
-	getActorIdQuery := fmt.Sprintf("SELECT id FROM actors WHERE id=%v", newPendingTransaction.Actor)
+	getActorIdQuery := fmt.Sprintf("SELECT id FROM actors WHERE id = '%v';", newPendingTransaction.Actor.Id)
 	actorIdRow, err := db.Query(getActorIdQuery)
 	if err != nil {
 		utils.SendInternalServerError(err, w)
@@ -198,26 +215,43 @@ func PatchPendingTransaction(w http.ResponseWriter, r *http.Request, ps httprout
 		return
 	}
 
-	query := fmt.Sprintf("UPDATE pending_transactions SET type='%v', amount='%v', description='%v', actor='%v' WHERE id='%v' RETURNING id, type, amount, description, actor, created_at;", newPendingTransaction.Type, newPendingTransaction.Amount, newPendingTransaction.Description, newPendingTransaction.Actor, pendingTransactionsId)
-	modifiedPendingTransaction := types.PendingTransaction{}
-	rows, err := db.Query(query)
+	var updatedId int
+	updateQuery := fmt.Sprintf("UPDATE pending_transactions SET type='%v', amount='%v', description='%v', actor='%v' WHERE id='%v' RETURNING id;", newPendingTransaction.Type, newPendingTransaction.Amount, newPendingTransaction.Description, newPendingTransaction.Actor.Id, pendingTransactionsId)
+	rowsUpdatedId, err := db.Query(updateQuery)
 	if err != nil {
 		utils.SendInternalServerError(err, w)
 		return
 	}
-	defer rows.Close()
-	for rows.Next() {
-		err = rows.Scan(&modifiedPendingTransaction.Id, &modifiedPendingTransaction.Type, &modifiedPendingTransaction.Amount, &modifiedPendingTransaction.Description, &modifiedPendingTransaction.Actor, &modifiedPendingTransaction.CreatedAt)
+	defer rowsUpdatedId.Close()
+	for rowsUpdatedId.Next() {
+		err = rowsUpdatedId.Scan(&updatedId)
 		if err != nil {
 			utils.SendInternalServerError(err, w)
 			return
 		}
 	}
-	if modifiedPendingTransaction.Id == 0 {
+	if updatedId == 0 {
 		w.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintf(w, "La transacción pendiente con el id %v no existe", pendingTransactionsId)
 		return
 	}
+
+	modifiedPendingTransaction := types.PendingTransaction{}
+	retrieveTransactionQuery := fmt.Sprintf("SELECT pending_transactions.id, pending_transactions.type, pending_transactions.amount, pending_transactions.description, pending_transactions.created_at, actors.id, actors.name FROM pending_transactions, actors WHERE pending_transactions.actor = actors.id AND pending_transactions.id = '%v';", updatedId)
+	rowsRetrievedTransaction, err := db.Query(retrieveTransactionQuery)
+	if err != nil {
+		utils.SendInternalServerError(err, w)
+		return
+	}
+	defer rowsRetrievedTransaction.Close()
+	for rowsRetrievedTransaction.Next() {
+		err = rowsRetrievedTransaction.Scan(&modifiedPendingTransaction.Id, &modifiedPendingTransaction.Type, &modifiedPendingTransaction.Amount, &modifiedPendingTransaction.Description, &modifiedPendingTransaction.CreatedAt, &modifiedPendingTransaction.Actor.Id, &modifiedPendingTransaction.Actor.Name)
+		if err != nil {
+			utils.SendInternalServerError(err, w)
+			return
+		}
+	}
+
 	response, err := json.Marshal(modifiedPendingTransaction)
 	if err != nil {
 		utils.SendInternalServerError(err, w)
@@ -295,7 +329,7 @@ func ExecutePendingTransaction(w http.ResponseWriter, r *http.Request, ps httpro
 	}
 	db := database.ConnectDB()
 	defer db.Close()
-	query := fmt.Sprintf("SELECT * FROM pending_transactions WHERE id='%v';", requestedId)
+	query := fmt.Sprintf("SELECT * FROM pending_transactions WHERE id = '%v';", requestedId)
 	rows, err := db.Query(query)
 	if err != nil {
 		utils.SendInternalServerError(err, w)
@@ -303,7 +337,7 @@ func ExecutePendingTransaction(w http.ResponseWriter, r *http.Request, ps httpro
 	}
 	pendingTransaction := types.PendingTransaction{}
 	for rows.Next() {
-		err = rows.Scan(&pendingTransaction.Id, &pendingTransaction.Type, &pendingTransaction.Amount, &pendingTransaction.Description, &pendingTransaction.Actor, &pendingTransaction.CreatedAt)
+		err = rows.Scan(&pendingTransaction.Id, &pendingTransaction.Type, &pendingTransaction.Amount, &pendingTransaction.Description, &pendingTransaction.Actor.Id, &pendingTransaction.CreatedAt)
 		if err != nil {
 			utils.SendInternalServerError(err, w)
 			return
@@ -342,18 +376,18 @@ func ExecutePendingTransaction(w http.ResponseWriter, r *http.Request, ps httpro
 		}
 	}
 
-	insertedTransaction := types.TransactionWithBalance{}
-	insertTransactionQuery := fmt.Sprintf("INSERT INTO transactions_with_balances(type, amount, description, balance, actor, created_at) VALUES ('%v', '%v', '%v', '%v', '%v', '%v') RETURNING id, type, amount, description, balance, actor, executed, created_at;", pendingTransaction.Type, pendingTransaction.Amount, pendingTransaction.Description, newBalance, pendingTransaction.Actor, pendingTransaction.CreatedAt)
+	var insertedTransactionId int
+	insertTransactionQuery := fmt.Sprintf("INSERT INTO transactions_with_balances(type, amount, description, balance, actor, created_at) VALUES ('%v', '%v', '%v', '%v', '%v', '%v') RETURNING id;", pendingTransaction.Type, pendingTransaction.Amount, pendingTransaction.Description, newBalance, pendingTransaction.Actor.Id, pendingTransaction.CreatedAt)
 
-	rows, err = db.Query(insertTransactionQuery)
+	rowsId, err := db.Query(insertTransactionQuery)
 	if err != nil {
 		utils.SendInternalServerError(err, w)
 		return
 	}
-	defer rows.Close()
+	defer rowsId.Close()
 
-	for rows.Next() {
-		if err := rows.Scan(&insertedTransaction.Id, &insertedTransaction.Type, &insertedTransaction.Amount, &insertedTransaction.Description, &insertedTransaction.Balance, &insertedTransaction.Actor, &insertedTransaction.Executed, &insertedTransaction.CreatedAt); err != nil {
+	for rowsId.Next() {
+		if err := rowsId.Scan(&insertedTransactionId); err != nil {
 			utils.SendInternalServerError(err, w)
 			return
 		}
@@ -364,6 +398,22 @@ func ExecutePendingTransaction(w http.ResponseWriter, r *http.Request, ps httpro
 	if err != nil {
 		utils.SendInternalServerError(err, w)
 		return
+	}
+
+	insertedTransaction := types.TransactionWithBalance{}
+	retrieveTransactionQuery := fmt.Sprintf("SELECT transactions_with_balances.id, transactions_with_balances.type, transactions_with_balances.amount, transactions_with_balances.description, transactions_with_balances.balance, transactions_with_balances.executed, transactions_with_balances.created_at, actors.id, actors.name FROM transactions_with_balances, actors WHERE transactions_with_balances.actor = actors.id AND transactions_with_balances.id = '%v';", insertedTransactionId)
+	rowsRetrievedTransaction, err := db.Query(retrieveTransactionQuery)
+	if err != nil {
+		utils.SendInternalServerError(err, w)
+		return
+	}
+	defer rowsRetrievedTransaction.Close()
+	for rowsRetrievedTransaction.Next() {
+		err = rowsRetrievedTransaction.Scan(&insertedTransaction.Id, &insertedTransaction.Type, &insertedTransaction.Amount, &insertedTransaction.Description, &insertedTransaction.Balance, &insertedTransaction.Executed, &insertedTransaction.CreatedAt, &insertedTransaction.Actor.Id, &insertedTransaction.Actor.Name)
+		if err != nil {
+			utils.SendInternalServerError(err, w)
+			return
+		}
 	}
 
 	response, err := json.Marshal(insertedTransaction)
