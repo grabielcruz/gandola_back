@@ -104,7 +104,7 @@ func CreateActor(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 
 func PatchActor(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	actorId := ps.ByName("id")
-	partialActor := types.PartialActor{}
+	actor := types.Actor{}
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -126,18 +126,18 @@ func PatchActor(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		fmt.Fprintf(w, "No puede modificar el actor externo")
 		return
 	}
-	err = json.Unmarshal(body, &partialActor)
+	err = json.Unmarshal(body, &actor)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintf(w, "La data enviada con corresponde con un actor parcial")
 		return
 	}
-	if partialActor.Name == "" {
+	if actor.Name == "" {
 		w.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintf(w, "Debe especificar el nombre del actor que desea modificar")
 		return
 	}
-	if partialActor.Description == "" {
+	if actor.Description == "" {
 		w.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintf(w, "Debe especificar la descripción del actor que desea modificar")
 		return
@@ -147,7 +147,7 @@ func PatchActor(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	defer db.Close()
 
 	var updatedActor types.Actor
-	patchActorQuery := fmt.Sprintf("UPDATE actors SET name='%v', description='%v' WHERE id='%v' RETURNING id, name, description, is_company, created_at;", partialActor.Name, partialActor.Description, actorId)
+	patchActorQuery := fmt.Sprintf("UPDATE actors SET name='%v', description='%v', is_company='%v' WHERE id='%v' RETURNING id, name, description, is_company, created_at;", actor.Name, actor.Description, actor.IsCompany, actorId)
 	actorRow, err := db.Query(patchActorQuery)
 	if err != nil {
 		if err.Error() == "pq: duplicate key value violates unique constraint \"actors_name_key\"" {
