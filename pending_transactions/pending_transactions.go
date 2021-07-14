@@ -17,7 +17,7 @@ func GetPendingTransactions(w http.ResponseWriter, r *http.Request, _ httprouter
 	transactions := []types.PendingTransaction{}
 	db := database.ConnectDB()
 	defer db.Close()
-	rows, err := db.Query("SELECT pending_transactions.id, pending_transactions.type, pending_transactions.amount, pending_transactions.description, pending_transactions.created_at, actors.id, actors.name FROM pending_transactions, actors WHERE pending_transactions.actor = actors.id ORDER BY pending_transactions.id DESC;")
+	rows, err := db.Query("SELECT pending_transactions.id, pending_transactions.type, pending_transactions.amount, pending_transactions.description, pending_transactions.created_at, actors.id, actors.name FROM pending_transactions, actors WHERE pending_transactions.actor = actors.id ORDER BY pending_transactions.id;")
 	if err != nil {
 		utils.SendInternalServerError(err, w)
 		return
@@ -67,7 +67,12 @@ func CreatePendingTransaction(w http.ResponseWriter, r *http.Request, _ httprout
 	}
 	if transaction.Amount <= 0 {
 		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintf(w, "El monto de la transacción pendiente debe ser mayor a cero")
+		fmt.Fprintf(w, "El monto de la transacción pendiente es menor a cero (0)")
+		return
+	}
+	if transaction.Amount > float32(types.MaxTransactionAmount) {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(w, "El monto de la transacción pendiente exede el máximo permitido")
 		return
 	}
 	if transaction.Description == "" {
@@ -180,9 +185,9 @@ func PatchPendingTransaction(w http.ResponseWriter, r *http.Request, ps httprout
 		fmt.Fprintf(w, "El tipo de la transacción debe ser 'input' o 'output'")
 		return
 	}
-	if newPendingTransaction.Amount <= 0 {
+	if newPendingTransaction.Amount <= 0 || newPendingTransaction.Amount > float32(types.MaxTransactionAmount) {
 		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintf(w, "La transacción pendiente debe poseer un monto mayor que cero")
+		fmt.Fprintf(w, "El monto de la transacción es muy bajo o muy alto")
 		return
 	}
 	if newPendingTransaction.Actor.Id <= 0 {
@@ -372,6 +377,11 @@ func ExecutePendingTransaction(w http.ResponseWriter, r *http.Request, ps httpro
 		if newBalance < 0 {
 			w.WriteHeader(http.StatusBadRequest)
 			fmt.Fprintf(w, "Su transacción pendiente de id %v no pudo ser ejecutada porque genera un balance menor a cero (0)", requestedId)
+			return
+		}
+		if newBalance > float32(types.MaxBalanceAmount) {
+			w.WriteHeader(http.StatusBadRequest)
+			fmt.Fprintf(w, "Su transacción no pudo ser ejecutada porque excede el balance máximo permitido")
 			return
 		}
 	}
