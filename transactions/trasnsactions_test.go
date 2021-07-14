@@ -271,7 +271,7 @@ func TestCreateTransactionWithoutAmount(t *testing.T) {
 		log.Fatal(err)
 		t.Error("Could not read body of response")
 	}
-	errMessage := "El monto de la transacción debe ser mayor a cero"
+	errMessage := "El monto de la transacción es menor a cero (0)"
 	if string(body) != errMessage {
 		t.Errorf("response = %v, want %v", string(body), errMessage)
 	}
@@ -444,6 +444,49 @@ func TestCreateTransactionWithBalanceLessThanZero(t *testing.T) {
 		t.Error("Could not read body of response")
 	}
 	errMessage := "Su transacción no pudo ser ejecutada porque genera un balance menor a cero (0)"
+	if string(body) != errMessage {
+		t.Errorf("response = %v, want %v", string(body), errMessage)
+	}
+}
+
+func TestCreateTransactionMoreThanMaximum(t *testing.T) {
+	router := httprouter.New()
+	router.POST("/transactions", CreateTransaction)
+	transactionType := "input"
+	transactionAmount := float32(1e15)
+	transactionDescription := "balance zero"
+	bodyString := fmt.Sprintf(`
+	{
+    "Type": "%v",
+    "Amount": %v,
+    "Description": "%v",
+		"Actor": {
+			"Id": 1
+		}
+  }
+	`, transactionType, transactionAmount, transactionDescription)
+
+	transactionBody := strings.NewReader(bodyString)
+	req, err := http.NewRequest("POST", "/transactions", transactionBody)
+	if err != nil {
+		log.Fatal(err)
+		t.Error("Could not make a post request to /transactions")
+	}
+	rr := httptest.NewRecorder()
+	router.ServeHTTP(rr, req)
+
+	t.Log("testing bad request status code")
+	if status := rr.Code; status != http.StatusBadRequest {
+		t.Errorf("status = %v, want %v", status, http.StatusBadRequest)
+	}
+
+	t.Log("testing error message")
+	body, err := ioutil.ReadAll(rr.Body)
+	if err != nil {
+		log.Fatal(err)
+		t.Error("Could not read body of response")
+	}
+	errMessage := "El monto de la transacción exede el máximo permitido"
 	if string(body) != errMessage {
 		t.Errorf("response = %v, want %v", string(body), errMessage)
 	}

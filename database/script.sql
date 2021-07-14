@@ -19,9 +19,9 @@ INSERT INTO actors (name, description) VALUES ('Externo', 'renglón para actor n
 CREATE TABLE transactions_with_balances (
   id SERIAL PRIMARY KEY,
   type transaction_type NOT NULL,
-  amount DECIMAL(9, 2) CHECK (amount >= 0) NOT NULL,
+  amount DECIMAL(17,2) CHECK (amount >= 0) NOT NULL,
   description TEXT NOT NULL,
-  balance DECIMAL(9, 2) CHECK (balance >= 0) NOT NULL,
+  balance DECIMAL(22,2) CHECK (balance >= 0) NOT NULL,
   actor INT REFERENCES actors(id) ON DELETE RESTRICT NOT NULL,
   executed TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
@@ -33,7 +33,7 @@ INSERT INTO transactions_with_balances (type, amount, description, balance, acto
 CREATE TABLE pending_transactions (
   id SERIAL PRIMARY KEY,
   type transaction_type NOT NULL,
-  amount DECIMAL(9, 2) CHECK (amount >= 0) NOT NULL,
+  amount DECIMAL(17,2) CHECK (amount >= 0) NOT NULL,
   description TEXT NOT NULL,
   actor INT REFERENCES actors(id) ON DELETE RESTRICT NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP

@@ -72,7 +72,12 @@ func CreateTransaction(w http.ResponseWriter, r *http.Request, _ httprouter.Para
 	}
 	if transaction.Amount <= 0 {
 		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintf(w, "El monto de la transacción debe ser mayor a cero")
+		fmt.Fprintf(w, "El monto de la transacción es menor a cero (0)")
+		return
+	}
+	if transaction.Amount > float32(types.MaxTransactionAmount) {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(w, "El monto de la transacción exede el máximo permitido")
 		return
 	}
 	if transaction.Description == "" {
@@ -129,11 +134,16 @@ func CreateTransaction(w http.ResponseWriter, r *http.Request, _ httprouter.Para
 		newBalance = lastBalance + transaction.Amount
 	} else if transaction.Type == "output" {
 		newBalance = lastBalance - transaction.Amount
-		if newBalance < 0 {
-			w.WriteHeader(http.StatusBadRequest)
-			fmt.Fprintf(w, "Su transacción no pudo ser ejecutada porque genera un balance menor a cero (0)")
-			return
-		}
+	}
+	if newBalance < 0 {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(w, "Su transacción no pudo ser ejecutada porque genera un balance menor a cero (0)")
+		return
+	}
+	if newBalance > float32(types.MaxBalanceAmount) {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(w, "Su transacción no pudo ser ejecutada porque excede el balance máximo permitido")
+		return
 	}
 
 	var insertedId int

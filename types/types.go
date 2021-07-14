@@ -23,18 +23,7 @@ type PendingTransaction struct {
 		Id   int
 		Name string
 	}
-	CreatedAt   string
-}
-
-type PartialTransaction struct {
-	Description string
-}
-
-type PartialPendingTransaction struct {
-	Type        string
-	Amount      float32
-	Description string
-	Actor       int
+	CreatedAt string
 }
 
 type Actor struct {
@@ -45,11 +34,9 @@ type Actor struct {
 	CreatedAt   string
 }
 
-type PartialActor struct {
-	Name        string
-	Description string
-}
-
 type IdResponse struct {
 	Id int
 }
+
+var MaxTransactionAmount = 1e14
+var MaxBalanceAmount = 1e19
