@@ -37,6 +37,15 @@ type Actor struct {
 	CreatedAt   string
 }
 
+type Note struct {
+	Id          int
+	Description string
+	Urgency     string
+	Attended    bool
+	CreatedAt   string
+	AttendedAt  string
+}
+
 type IdResponse struct {
 	Id int
 }

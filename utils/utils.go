@@ -19,7 +19,7 @@ func RandStringBytes(n int) string {
 }
 
 func SendInternalServerError(err error, w http.ResponseWriter) {
-	log.Fatal(err)
 	w.WriteHeader(http.StatusInternalServerError)
 	fmt.Fprintf(w, "Error del servidor")
+	log.Fatal(err)
 }

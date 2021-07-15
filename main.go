@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"example.com/backend_gandola_soft/actors"
+	"example.com/backend_gandola_soft/notes"
 	"example.com/backend_gandola_soft/pending_transactions"
 	"example.com/backend_gandola_soft/transactions"
 
@@ -29,20 +30,27 @@ func main() {
 	router.PATCH("/transactions/:id", CustomOptions(transactions.PatchTransaction))
 	router.DELETE("/transactions", CustomOptions(transactions.DeleteLastTransaction))
 	router.PUT("/transactions", CustomOptions(transactions.UnexecuteLastTransaction))
-	router.GET("/lasttransactionid", CustomOptions(transactions.GetLastTransactionId)) //mostly for testing porpuses
+	// router.GET("/lasttransactionid", CustomOptions(transactions.GetLastTransactionId)) //mostly for testing porpuses
 
 	router.GET("/pending_transactions", CustomOptions(pending_transactions.GetPendingTransactions))
 	router.POST("/pending_transactions", CustomOptions(pending_transactions.CreatePendingTransaction))
 	router.PATCH("/pending_transactions/:id", CustomOptions(pending_transactions.PatchPendingTransaction))
 	router.DELETE("/pending_transactions/:id", CustomOptions(pending_transactions.DeletePendingTransaction))
 	router.PUT("/pending_transactions/:id", CustomOptions(pending_transactions.ExecutePendingTransaction))
-	router.GET("/lastpendingtransactionid", CustomOptions(pending_transactions.GetLastTransactionId)) //mostly for testing porpuses
+	// router.GET("/lastpendingtransactionid", CustomOptions(pending_transactions.GetLastTransactionId)) //mostly for testing porpuses
 
 	router.GET("/actors", CustomOptions(actors.GetActors))
 	router.POST("/actors", CustomOptions(actors.CreateActor))
 	router.PATCH("/actors/:id", CustomOptions(actors.PatchActor))
 	router.DELETE("/actors/:id", CustomOptions(actors.DeleteActor))
-	router.GET("/lastactor", CustomOptions(actors.GetLastActor))
+	// router.GET("/lastactor", CustomOptions(actors.GetLastActor))
+
+	router.GET("/notes", CustomOptions(notes.GetNotes))
+	router.POST("/notes", CustomOptions(notes.CreateNote))
+	router.PATCH("/notes/:id", CustomOptions(notes.PatchNote))
+	router.DELETE("/notes/:id", CustomOptions(notes.DeleteNote))
+	router.PUT("/attend_note/:id", CustomOptions(notes.AttendNote))
+	router.PUT("/unattend_note/:id", CustomOptions(notes.UnattendNote))
 
 	log.Fatal(http.ListenAndServe(":8080", router))
 }

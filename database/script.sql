@@ -6,6 +6,7 @@ CREATE DATABASE gandola_soft;
 
 CREATE TYPE transaction_type AS ENUM ('output', 'input');
 CREATE TYPE currency_type AS ENUM('USD', 'VES');
+CREATE TYPE urgency_type AS ENUM('low', 'medium', 'high', 'critical');
 
 CREATE TABLE actors (
   id SERIAL PRIMARY KEY,
@@ -46,7 +47,17 @@ CREATE TABLE pending_transactions (
 INSERT INTO pending_transactions (type, currency, amount, description, actor) 
   VALUES ('input', 'USD', '0', 'pending transaction zero', '1');
 
--- TODO: Notes
+CREATE TABLE notes (
+  id SERIAL PRIMARY KEY,
+  description TEXT NOT NULL,
+  urgency urgency_type NOT NULL,
+  attended BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  attended_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO notes (description, urgency) VALUES ('first note', 'low');
+
 -- CREATE TABLE trip_bills (
 --   id TEXT PRIMARY KEY,
 --   url TEXT NOT NULL,

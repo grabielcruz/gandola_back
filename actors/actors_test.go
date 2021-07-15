@@ -352,7 +352,7 @@ func TestPatchActor(t *testing.T) {
 	}
 
 	router.PATCH("/actors/:id", PatchActor)
-	requesUrl := fmt.Sprintf("/actors/%v", lastActor.Id)
+	requestUrl := fmt.Sprintf("/actors/%v", lastActor.Id)
 
 	actorName := utils.RandStringBytes(20)
 	actorDescription := "test patch actor"
@@ -363,7 +363,7 @@ func TestPatchActor(t *testing.T) {
 		}
 	`, actorName, actorDescription)
 	requestBody := strings.NewReader(bodyString)
-	req2, err := http.NewRequest("PATCH", requesUrl, requestBody)
+	req2, err := http.NewRequest("PATCH", requestUrl, requestBody)
 	if err != nil {
 		log.Fatal(err)
 		t.Error("Could not make a patch request to /actors/:id")
@@ -632,7 +632,7 @@ func TestPatchActorDuplicatedName(t *testing.T) {
 	router.PATCH("/actors/:id", PatchActor)
 	requesUrl := fmt.Sprintf("/actors/%v", lastActor.Id)
 
-	actorName := "externo"
+	actorName := "Externo"
 	actorDescription := "duplicated name"
 	bodyString := fmt.Sprintf(`
 		{
@@ -668,7 +668,7 @@ func TestPatchActorDuplicatedName(t *testing.T) {
 
 func TestPatchActorNonExistingActor(t *testing.T) {
 	router := httprouter.New()
-	
+
 	router.PATCH("/actors/:id", PatchActor)
 	requesUrl := fmt.Sprintf("/actors/%v", 9999)
 
@@ -708,7 +708,7 @@ func TestPatchActorNonExistingActor(t *testing.T) {
 
 func TestPatchActorExterno(t *testing.T) {
 	router := httprouter.New()
-	
+
 	router.PATCH("/actors/:id", PatchActor)
 	requesUrl := fmt.Sprintf("/actors/%v", 1)
 
@@ -748,7 +748,7 @@ func TestPatchActorExterno(t *testing.T) {
 
 func TestPatchActorWrongId(t *testing.T) {
 	router := httprouter.New()
-	
+
 	router.PATCH("/actors/:id", PatchActor)
 	requesUrl := fmt.Sprintf("/actors/%v", 0)
 
@@ -821,7 +821,6 @@ func TestDeleteActor(t *testing.T) {
 	router.DELETE("/actors/:id", DeleteActor)
 	requesUrl := fmt.Sprintf("/actors/%v", lastActor.Id)
 
-	
 	req2, err := http.NewRequest("DELETE", requesUrl, nil)
 	if err != nil {
 		log.Fatal(err)
@@ -851,10 +850,10 @@ func TestDeleteActor(t *testing.T) {
 
 func TestDeleteActorBadId(t *testing.T) {
 	router := httprouter.New()
-	
+
 	router.DELETE("/actors/:id", DeleteActor)
 	requesUrl := fmt.Sprintf("/actors/%v", 0)
-	
+
 	req2, err := http.NewRequest("DELETE", requesUrl, nil)
 	if err != nil {
 		log.Fatal(err)
@@ -882,10 +881,10 @@ func TestDeleteActorBadId(t *testing.T) {
 
 func TestDeleteActorTakenActor(t *testing.T) {
 	router := httprouter.New()
-	
+
 	router.DELETE("/actors/:id", DeleteActor)
 	requesUrl := fmt.Sprintf("/actors/%v", 1)
-	
+
 	req2, err := http.NewRequest("DELETE", requesUrl, nil)
 	if err != nil {
 		log.Fatal(err)
