@@ -319,16 +319,16 @@ func DeleteLastTransaction(w http.ResponseWriter, r *http.Request, _ httprouter.
 		}
 	}
 
+	if deletedTransactionId.Id <= 1 {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(w, "No quedan más transacciones por eliminar")
+		return
+	}
+
 	rollBackIdQuery := "SELECT setval('transactions_with_balances_id_seq', (SELECT last_value from transactions_with_balances_id_seq) - 1);"
 	_, err = db.Query(rollBackIdQuery)
 	if err != nil {
 		utils.SendInternalServerError(err, w)
-		return
-	}
-
-	if deletedTransactionId.Id == -1 {
-		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintf(w, "No quedan más transacciones por eliminar")
 		return
 	}
 
@@ -392,6 +392,12 @@ func UnexecuteLastTransaction(w http.ResponseWriter, r *http.Request, _ httprout
 			utils.SendInternalServerError(err, w)
 			return
 		}
+	}
+
+	if lastTransaction.Id == 1 {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(w, "No se puede desejecutar la transacción cero")
+		return
 	}
 
 	var insertedPendingTransactionId int
