@@ -17,7 +17,7 @@ func GetPendingTransactions(w http.ResponseWriter, r *http.Request, _ httprouter
 	transactions := []types.PendingTransaction{}
 	db := database.ConnectDB()
 	defer db.Close()
-	rows, err := db.Query("SELECT pending_transactions.id, pending_transactions.type, pending_transactions.amount, pending_transactions.description, pending_transactions.created_at, actors.id, actors.name FROM pending_transactions, actors WHERE pending_transactions.actor = actors.id ORDER BY pending_transactions.id;")
+	rows, err := db.Query("SELECT pending_transactions.id, pending_transactions.type, pending_transactions.currency, pending_transactions.amount, pending_transactions.description, pending_transactions.created_at, actors.id, actors.name FROM pending_transactions, actors WHERE pending_transactions.actor = actors.id ORDER BY pending_transactions.id;")
 	if err != nil {
 		utils.SendInternalServerError(err, w)
 		return
@@ -25,7 +25,7 @@ func GetPendingTransactions(w http.ResponseWriter, r *http.Request, _ httprouter
 	defer rows.Close()
 	for rows.Next() {
 		transaction := types.PendingTransaction{}
-		err = rows.Scan(&transaction.Id, &transaction.Type, &transaction.Amount, &transaction.Description, &transaction.CreatedAt, &transaction.Actor.Id, &transaction.Actor.Name)
+		err = rows.Scan(&transaction.Id, &transaction.Type, &transaction.Currency, &transaction.Amount, &transaction.Description, &transaction.CreatedAt, &transaction.Actor.Id, &transaction.Actor.Name)
 		if err != nil {
 			utils.SendInternalServerError(err, w)
 			return
@@ -55,14 +55,14 @@ func CreatePendingTransaction(w http.ResponseWriter, r *http.Request, _ httprout
 		fmt.Fprintf(w, "La data recibida no corresponde con una transacción pendiente")
 		return
 	}
-	if transaction.Type == "" || transaction.Type != "input" {
-		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintf(w, "Debe especificar el tipo de transacción pendiente")
-		return
-	}
 	if transaction.Type != "input" && transaction.Type != "output" {
 		w.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintf(w, "El tipo de transacción solo puede ser del tipo 'input' o 'output'")
+		return
+	}
+	if transaction.Currency != "USD" && transaction.Currency != "VES" {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(w, "Solo se aceptan monedas de tipo VES y USD")
 		return
 	}
 	if transaction.Amount <= 0 {
@@ -111,7 +111,7 @@ func CreatePendingTransaction(w http.ResponseWriter, r *http.Request, _ httprout
 	}
 
 	var insertedId int
-	insertTransactionQuery := fmt.Sprintf("INSERT INTO pending_transactions(type, amount, description, actor) VALUES ('%v', '%v', '%v', '%v') RETURNING id;", transaction.Type, transaction.Amount, transaction.Description, transaction.Actor.Id)
+	insertTransactionQuery := fmt.Sprintf("INSERT INTO pending_transactions(type, currency, amount, description, actor) VALUES ('%v', '%v', '%v', '%v', '%v') RETURNING id;", transaction.Type, transaction.Currency, transaction.Amount, transaction.Description, transaction.Actor.Id)
 
 	rowsInsertedId, err := db.Query(insertTransactionQuery)
 	if err != nil {
@@ -127,7 +127,7 @@ func CreatePendingTransaction(w http.ResponseWriter, r *http.Request, _ httprout
 	}
 
 	insertedTransaction := types.PendingTransaction{}
-	retrieveTransactionQuery := fmt.Sprintf("SELECT pending_transactions.id, pending_transactions.type, pending_transactions.amount, pending_transactions.description, pending_transactions.created_at, actors.id, actors.name FROM pending_transactions, actors WHERE pending_transactions.actor = actors.id AND pending_transactions.id = '%v';", insertedId)
+	retrieveTransactionQuery := fmt.Sprintf("SELECT pending_transactions.id, pending_transactions.type, pending_transactions.currency, pending_transactions.amount, pending_transactions.description, pending_transactions.created_at, actors.id, actors.name FROM pending_transactions, actors WHERE pending_transactions.actor = actors.id AND pending_transactions.id = '%v';", insertedId)
 	rowsRetrievedTransaction, err := db.Query(retrieveTransactionQuery)
 	if err != nil {
 		utils.SendInternalServerError(err, w)
@@ -135,7 +135,7 @@ func CreatePendingTransaction(w http.ResponseWriter, r *http.Request, _ httprout
 	}
 	defer rowsRetrievedTransaction.Close()
 	for rowsRetrievedTransaction.Next() {
-		err = rowsRetrievedTransaction.Scan(&insertedTransaction.Id, &insertedTransaction.Type, &insertedTransaction.Amount, &insertedTransaction.Description, &insertedTransaction.CreatedAt, &insertedTransaction.Actor.Id, &insertedTransaction.Actor.Name)
+		err = rowsRetrievedTransaction.Scan(&insertedTransaction.Id, &insertedTransaction.Type, &insertedTransaction.Currency, &insertedTransaction.Amount, &insertedTransaction.Description, &insertedTransaction.CreatedAt, &insertedTransaction.Actor.Id, &insertedTransaction.Actor.Name)
 		if err != nil {
 			utils.SendInternalServerError(err, w)
 			return
@@ -185,6 +185,11 @@ func PatchPendingTransaction(w http.ResponseWriter, r *http.Request, ps httprout
 		fmt.Fprintf(w, "El tipo de la transacción debe ser 'input' o 'output'")
 		return
 	}
+	if newPendingTransaction.Currency != "USD" && newPendingTransaction.Currency != "VES" {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(w, "Solo se aceptan monedas de tipo VES y USD")
+		return
+	}
 	if newPendingTransaction.Amount <= 0 || newPendingTransaction.Amount > float32(types.MaxTransactionAmount) {
 		w.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintf(w, "El monto de la transacción es muy bajo o muy alto")
@@ -221,7 +226,7 @@ func PatchPendingTransaction(w http.ResponseWriter, r *http.Request, ps httprout
 	}
 
 	var updatedId int
-	updateQuery := fmt.Sprintf("UPDATE pending_transactions SET type='%v', amount='%v', description='%v', actor='%v' WHERE id='%v' RETURNING id;", newPendingTransaction.Type, newPendingTransaction.Amount, newPendingTransaction.Description, newPendingTransaction.Actor.Id, pendingTransactionsId)
+	updateQuery := fmt.Sprintf("UPDATE pending_transactions SET type='%v', currency='%v', amount='%v', description='%v', actor='%v' WHERE id='%v' RETURNING id;", newPendingTransaction.Type, newPendingTransaction.Currency, newPendingTransaction.Amount, newPendingTransaction.Description, newPendingTransaction.Actor.Id, pendingTransactionsId)
 	rowsUpdatedId, err := db.Query(updateQuery)
 	if err != nil {
 		utils.SendInternalServerError(err, w)
@@ -242,7 +247,7 @@ func PatchPendingTransaction(w http.ResponseWriter, r *http.Request, ps httprout
 	}
 
 	modifiedPendingTransaction := types.PendingTransaction{}
-	retrieveTransactionQuery := fmt.Sprintf("SELECT pending_transactions.id, pending_transactions.type, pending_transactions.amount, pending_transactions.description, pending_transactions.created_at, actors.id, actors.name FROM pending_transactions, actors WHERE pending_transactions.actor = actors.id AND pending_transactions.id = '%v';", updatedId)
+	retrieveTransactionQuery := fmt.Sprintf("SELECT pending_transactions.id, pending_transactions.type, pending_transactions.Currency, pending_transactions.amount, pending_transactions.description, pending_transactions.created_at, actors.id, actors.name FROM pending_transactions, actors WHERE pending_transactions.actor = actors.id AND pending_transactions.id = '%v';", updatedId)
 	rowsRetrievedTransaction, err := db.Query(retrieveTransactionQuery)
 	if err != nil {
 		utils.SendInternalServerError(err, w)
@@ -250,7 +255,7 @@ func PatchPendingTransaction(w http.ResponseWriter, r *http.Request, ps httprout
 	}
 	defer rowsRetrievedTransaction.Close()
 	for rowsRetrievedTransaction.Next() {
-		err = rowsRetrievedTransaction.Scan(&modifiedPendingTransaction.Id, &modifiedPendingTransaction.Type, &modifiedPendingTransaction.Amount, &modifiedPendingTransaction.Description, &modifiedPendingTransaction.CreatedAt, &modifiedPendingTransaction.Actor.Id, &modifiedPendingTransaction.Actor.Name)
+		err = rowsRetrievedTransaction.Scan(&modifiedPendingTransaction.Id, &modifiedPendingTransaction.Type, &modifiedPendingTransaction.Currency, &modifiedPendingTransaction.Amount, &modifiedPendingTransaction.Description, &modifiedPendingTransaction.CreatedAt, &modifiedPendingTransaction.Actor.Id, &modifiedPendingTransaction.Actor.Name)
 		if err != nil {
 			utils.SendInternalServerError(err, w)
 			return
@@ -342,7 +347,7 @@ func ExecutePendingTransaction(w http.ResponseWriter, r *http.Request, ps httpro
 	}
 	pendingTransaction := types.PendingTransaction{}
 	for rows.Next() {
-		err = rows.Scan(&pendingTransaction.Id, &pendingTransaction.Type, &pendingTransaction.Amount, &pendingTransaction.Description, &pendingTransaction.Actor.Id, &pendingTransaction.CreatedAt)
+		err = rows.Scan(&pendingTransaction.Id, &pendingTransaction.Type, &pendingTransaction.Currency, &pendingTransaction.Amount, &pendingTransaction.Description, &pendingTransaction.Actor.Id, &pendingTransaction.CreatedAt)
 		if err != nil {
 			utils.SendInternalServerError(err, w)
 			return
@@ -354,9 +359,9 @@ func ExecutePendingTransaction(w http.ResponseWriter, r *http.Request, ps httpro
 		return
 	}
 
-	var lastBalance float32
-	var newBalance float32
-	getLastBalanceQuery := "SELECT balance FROM transactions_with_balances ORDER BY id desc LIMIT 1;"
+	var lastUSDBalance float32
+	var lastVESBalance float32
+	getLastBalanceQuery := "SELECT USD_balance, VES_balance FROM transactions_with_balances ORDER BY id desc LIMIT 1;"
 	lastTransactionRow, err := db.Query(getLastBalanceQuery)
 	if err != nil {
 		utils.SendInternalServerError(err, w)
@@ -364,30 +369,54 @@ func ExecutePendingTransaction(w http.ResponseWriter, r *http.Request, ps httpro
 	}
 	defer lastTransactionRow.Close()
 	for lastTransactionRow.Next() {
-		if err := lastTransactionRow.Scan(&lastBalance); err != nil {
+		if err := lastTransactionRow.Scan(&lastUSDBalance, &lastVESBalance); err != nil {
 			utils.SendInternalServerError(err, w)
 			return
 		}
 	}
+	newUSDBalance := lastUSDBalance
+	newVESBalance := lastVESBalance
 
-	if pendingTransaction.Type == "input" {
-		newBalance = lastBalance + pendingTransaction.Amount
-	} else if pendingTransaction.Type == "output" {
-		newBalance = lastBalance - pendingTransaction.Amount
-		if newBalance < 0 {
-			w.WriteHeader(http.StatusBadRequest)
-			fmt.Fprintf(w, "Su transacción pendiente de id %v no pudo ser ejecutada porque genera un balance menor a cero (0)", requestedId)
-			return
+	if pendingTransaction.Currency == "USD" {
+		if pendingTransaction.Type == "input" {
+			newUSDBalance = lastUSDBalance + pendingTransaction.Amount
+			if newUSDBalance < 0 {
+				w.WriteHeader(http.StatusBadRequest)
+				fmt.Fprintf(w, "Su transacción pendiente de id %v no pudo ser ejecutada porque genera un balance menor a cero (0)", requestedId)
+				return
+			}
+		} 
+		if pendingTransaction.Type == "output" {
+			newUSDBalance = lastUSDBalance - pendingTransaction.Amount
+			if newUSDBalance > float32(types.MaxBalanceAmount) {
+				w.WriteHeader(http.StatusBadRequest)
+				fmt.Fprintf(w, "Su transacción no pudo ser ejecutada porque excede el balance máximo permitido")
+				return
+			}
 		}
-		if newBalance > float32(types.MaxBalanceAmount) {
-			w.WriteHeader(http.StatusBadRequest)
-			fmt.Fprintf(w, "Su transacción no pudo ser ejecutada porque excede el balance máximo permitido")
-			return
+	}
+
+	if pendingTransaction.Currency == "VES" {
+		if pendingTransaction.Type == "input" {
+			newVESBalance = lastVESBalance + pendingTransaction.Amount
+			if newVESBalance < 0 {
+				w.WriteHeader(http.StatusBadRequest)
+				fmt.Fprintf(w, "Su transacción pendiente de id %v no pudo ser ejecutada porque genera un balance menor a cero (0)", requestedId)
+				return
+			}
+		} 
+		if pendingTransaction.Type == "output" {
+			newVESBalance = lastVESBalance - pendingTransaction.Amount
+			if newVESBalance > float32(types.MaxBalanceAmount) {
+				w.WriteHeader(http.StatusBadRequest)
+				fmt.Fprintf(w, "Su transacción no pudo ser ejecutada porque excede el balance máximo permitido")
+				return
+			}
 		}
 	}
 
 	var insertedTransactionId int
-	insertTransactionQuery := fmt.Sprintf("INSERT INTO transactions_with_balances(type, amount, description, balance, actor, created_at) VALUES ('%v', '%v', '%v', '%v', '%v', '%v') RETURNING id;", pendingTransaction.Type, pendingTransaction.Amount, pendingTransaction.Description, newBalance, pendingTransaction.Actor.Id, pendingTransaction.CreatedAt)
+	insertTransactionQuery := fmt.Sprintf("INSERT INTO transactions_with_balances(type, currency, amount, description, USD_balance, VES_balance, actor, created_at) VALUES ('%v', '%v', '%v', '%v', '%v', '%v', '%v', '%v') RETURNING id;", pendingTransaction.Type, pendingTransaction.Currency, pendingTransaction.Amount, pendingTransaction.Description, newUSDBalance, newVESBalance, pendingTransaction.Actor.Id, pendingTransaction.CreatedAt)
 
 	rowsId, err := db.Query(insertTransactionQuery)
 	if err != nil {
@@ -411,7 +440,7 @@ func ExecutePendingTransaction(w http.ResponseWriter, r *http.Request, ps httpro
 	}
 
 	insertedTransaction := types.TransactionWithBalance{}
-	retrieveTransactionQuery := fmt.Sprintf("SELECT transactions_with_balances.id, transactions_with_balances.type, transactions_with_balances.amount, transactions_with_balances.description, transactions_with_balances.balance, transactions_with_balances.executed, transactions_with_balances.created_at, actors.id, actors.name FROM transactions_with_balances, actors WHERE transactions_with_balances.actor = actors.id AND transactions_with_balances.id = '%v';", insertedTransactionId)
+	retrieveTransactionQuery := fmt.Sprintf("SELECT transactions_with_balances.id, transactions_with_balances.type, transactions_with_balances.currency, transactions_with_balances.amount, transactions_with_balances.description, transactions_with_balances.USD_balance, transactions_with_balances.VES_balance, transactions_with_balances.executed, transactions_with_balances.created_at, actors.id, actors.name FROM transactions_with_balances, actors WHERE transactions_with_balances.actor = actors.id AND transactions_with_balances.id = '%v';", insertedTransactionId)
 	rowsRetrievedTransaction, err := db.Query(retrieveTransactionQuery)
 	if err != nil {
 		utils.SendInternalServerError(err, w)
@@ -419,7 +448,7 @@ func ExecutePendingTransaction(w http.ResponseWriter, r *http.Request, ps httpro
 	}
 	defer rowsRetrievedTransaction.Close()
 	for rowsRetrievedTransaction.Next() {
-		err = rowsRetrievedTransaction.Scan(&insertedTransaction.Id, &insertedTransaction.Type, &insertedTransaction.Amount, &insertedTransaction.Description, &insertedTransaction.Balance, &insertedTransaction.Executed, &insertedTransaction.CreatedAt, &insertedTransaction.Actor.Id, &insertedTransaction.Actor.Name)
+		err = rowsRetrievedTransaction.Scan(&insertedTransaction.Id, &insertedTransaction.Type, &insertedTransaction.Currency, &insertedTransaction.Amount, &insertedTransaction.Description, &insertedTransaction.USDBalance, &insertedTransaction.VESBalance, &insertedTransaction.Executed, &insertedTransaction.CreatedAt, &insertedTransaction.Actor.Id, &insertedTransaction.Actor.Name)
 		if err != nil {
 			utils.SendInternalServerError(err, w)
 			return

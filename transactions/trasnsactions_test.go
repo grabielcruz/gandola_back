@@ -63,7 +63,6 @@ func TestGetTransactions(t *testing.T) {
 	transaction_type := "input"
 	amount := float32(0)
 	description := "transaction zero"
-	balance := float32(0)
 
 	transactions := []types.TransactionWithBalance{}
 	body, err := ioutil.ReadAll(rr.Body)
@@ -90,9 +89,7 @@ func TestGetTransactions(t *testing.T) {
 	if description != transactions[lastIndex].Description {
 		t.Errorf("Description = %v, want %v", description, transactions[lastIndex].Description)
 	}
-	if balance != transactions[lastIndex].Balance {
-		t.Errorf("Balance = %v, want %v", balance, transactions[lastIndex].Balance)
-	}
+
 }
 
 func TestCreateTransaction(t *testing.T) {
@@ -100,18 +97,20 @@ func TestCreateTransaction(t *testing.T) {
 	router.POST("/transactions", CreateTransaction)
 
 	transactionType := "input"
+	transactionCurrency := "USD"
 	transactionAmount := float32(3)
 	transactionDescription := "abc"
 	bodyString := fmt.Sprintf(`
 	{
     "Type": "%v",
+		"Currency": "%v",
     "Amount": %v,
     "Description": "%v",
 		"Actor": {
 			"Id": 1
 		}
   }
-	`, transactionType, transactionAmount, transactionDescription)
+	`, transactionType, transactionCurrency, transactionAmount, transactionDescription)
 	transactionBody := strings.NewReader(bodyString)
 	req, err := http.NewRequest("POST", "/transactions", transactionBody)
 	if err != nil {
@@ -152,18 +151,20 @@ func TestCreateTransactionWithoutType(t *testing.T) {
 	router := httprouter.New()
 	router.POST("/transactions", CreateTransaction)
 	transactionType := ""
+	transactionCurrency := "USD"
 	transactionAmount := float32(3)
 	transactionDescription := "abc"
 	bodyString := fmt.Sprintf(`
 	{
     "Type": "%v",
+		"Currency": "%v",
     "Amount": %v,
     "Description": "%v",
 		"Actor": {
 			"Id": 1
 		}
   }
-	`, transactionType, transactionAmount, transactionDescription)
+	`, transactionType, transactionCurrency, transactionAmount, transactionDescription)
 
 	transactionBody := strings.NewReader(bodyString)
 	req, err := http.NewRequest("POST", "/transactions", transactionBody)
@@ -195,18 +196,20 @@ func TestCreateTransactionWithWrongType(t *testing.T) {
 	router := httprouter.New()
 	router.POST("/transactions", CreateTransaction)
 	transactionType := "wrongtype"
+	transactionCurrency := "USD"
 	transactionAmount := float32(3)
 	transactionDescription := "abc"
 	bodyString := fmt.Sprintf(`
 	{
     "Type": "%v",
+		"Currency": "%v",
     "Amount": %v,
     "Description": "%v",
 		"Actor": {
 			"Id": 1
 		}
   }
-	`, transactionType, transactionAmount, transactionDescription)
+	`, transactionType, transactionCurrency, transactionAmount, transactionDescription)
 
 	transactionBody := strings.NewReader(bodyString)
 	req, err := http.NewRequest("POST", "/transactions", transactionBody)
@@ -238,18 +241,20 @@ func TestCreateTransactionWithoutAmount(t *testing.T) {
 	router := httprouter.New()
 	router.POST("/transactions", CreateTransaction)
 	transactionType := "input"
+	transactionCurrency := "USD"
 	transactionAmount := float32(0)
 	transactionDescription := "abc"
 	bodyString := fmt.Sprintf(`
 	{
     "Type": "%v",
+		"Currency": "%v",
     "Amount": %v,
     "Description": "%v",
 		"Actor": {
 			"Id": 1
 		}
   }
-	`, transactionType, transactionAmount, transactionDescription)
+	`, transactionType, transactionCurrency, transactionAmount, transactionDescription)
 
 	transactionBody := strings.NewReader(bodyString)
 	req, err := http.NewRequest("POST", "/transactions", transactionBody)
@@ -281,18 +286,20 @@ func TestCreateTransactionWithoutDescription(t *testing.T) {
 	router := httprouter.New()
 	router.POST("/transactions", CreateTransaction)
 	transactionType := "input"
+	transactionCurrency := "USD"
 	transactionAmount := float32(3)
 	transactionDescription := ""
 	bodyString := fmt.Sprintf(`
 	{
     "Type": "%v",
+		"Currency": "%v",
     "Amount": %v,
     "Description": "%v",
 		"Actor": {
 			"Id": 1
 		}
   }
-	`, transactionType, transactionAmount, transactionDescription)
+	`, transactionType, transactionCurrency, transactionAmount, transactionDescription)
 
 	transactionBody := strings.NewReader(bodyString)
 	req, err := http.NewRequest("POST", "/transactions", transactionBody)
@@ -324,18 +331,20 @@ func TestCreateTransactionWithBadJson(t *testing.T) {
 	router := httprouter.New()
 	router.POST("/transactions", CreateTransaction)
 	transactionType := "input"
+	transactionCurrency := "USD"
 	transactionAmount := float32(3)
 	transactionDescription := "abc"
 	bodyString := fmt.Sprintf(`
 	{
     "Type": "%v",
+		"Currency": "%v",
     "Amount": %v,
     "Description": "%v",
 		"Actor": {
 			"Id": 1
 		},
   }
-	`, transactionType, transactionAmount, transactionDescription)
+	`, transactionType, transactionCurrency, transactionAmount, transactionDescription)
 
 	transactionBody := strings.NewReader(bodyString)
 	req, err := http.NewRequest("POST", "/transactions", transactionBody)
@@ -367,18 +376,20 @@ func TestCreateTransactionWithNonExistingActor(t *testing.T) {
 	router := httprouter.New()
 	router.POST("/transactions", CreateTransaction)
 	transactionType := "input"
+	transactionCurrency := "VES"
 	transactionAmount := float32(3)
 	transactionDescription := "abc"
 	bodyString := fmt.Sprintf(`
 	{
     "Type": "%v",
+		"Currency": "%v",
     "Amount": %v,
     "Description": "%v",
 		"Actor": {
 			"Id": 9999
 		}
   }
-	`, transactionType, transactionAmount, transactionDescription)
+	`, transactionType, transactionCurrency, transactionAmount, transactionDescription)
 
 	transactionBody := strings.NewReader(bodyString)
 	req, err := http.NewRequest("POST", "/transactions", transactionBody)
@@ -410,18 +421,20 @@ func TestCreateTransactionWithBalanceLessThanZero(t *testing.T) {
 	router := httprouter.New()
 	router.POST("/transactions", CreateTransaction)
 	transactionType := "output"
+	transactionCurrency := "USD"
 	transactionAmount := float32(999999999999)
 	transactionDescription := "balance zero"
 	bodyString := fmt.Sprintf(`
 	{
     "Type": "%v",
+		"Currency": "%v",
     "Amount": %v,
     "Description": "%v",
 		"Actor": {
 			"Id": 1
 		}
   }
-	`, transactionType, transactionAmount, transactionDescription)
+	`, transactionType, transactionCurrency, transactionAmount, transactionDescription)
 
 	transactionBody := strings.NewReader(bodyString)
 	req, err := http.NewRequest("POST", "/transactions", transactionBody)
@@ -453,18 +466,20 @@ func TestCreateTransactionMoreThanMaximum(t *testing.T) {
 	router := httprouter.New()
 	router.POST("/transactions", CreateTransaction)
 	transactionType := "input"
+	transactionCurrency := "USD"
 	transactionAmount := float32(1e15)
 	transactionDescription := "balance zero"
 	bodyString := fmt.Sprintf(`
 	{
     "Type": "%v",
+		"Currency": "%v",
     "Amount": %v,
     "Description": "%v",
 		"Actor": {
 			"Id": 1
 		}
   }
-	`, transactionType, transactionAmount, transactionDescription)
+	`, transactionType, transactionCurrency, transactionAmount, transactionDescription)
 
 	transactionBody := strings.NewReader(bodyString)
 	req, err := http.NewRequest("POST", "/transactions", transactionBody)
@@ -487,6 +502,51 @@ func TestCreateTransactionMoreThanMaximum(t *testing.T) {
 		t.Error("Could not read body of response")
 	}
 	errMessage := "El monto de la transacción exede el máximo permitido"
+	if string(body) != errMessage {
+		t.Errorf("response = %v, want %v", string(body), errMessage)
+	}
+}
+
+func TestCreateTransactionWrongCurrency(t *testing.T) {
+	router := httprouter.New()
+	router.POST("/transactions", CreateTransaction)
+	transactionType := "input"
+	transactionCurrency := "wrong"
+	transactionAmount := float32(5)
+	transactionDescription := "balance zero"
+	bodyString := fmt.Sprintf(`
+	{
+    "Type": "%v",
+		"Currency": "%v",
+    "Amount": %v,
+    "Description": "%v",
+		"Actor": {
+			"Id": 1
+		}
+  }
+	`, transactionType, transactionCurrency, transactionAmount, transactionDescription)
+
+	transactionBody := strings.NewReader(bodyString)
+	req, err := http.NewRequest("POST", "/transactions", transactionBody)
+	if err != nil {
+		log.Fatal(err)
+		t.Error("Could not make a post request to /transactions")
+	}
+	rr := httptest.NewRecorder()
+	router.ServeHTTP(rr, req)
+
+	t.Log("testing bad request status code")
+	if status := rr.Code; status != http.StatusBadRequest {
+		t.Errorf("status = %v, want %v", status, http.StatusBadRequest)
+	}
+
+	t.Log("testing error message")
+	body, err := ioutil.ReadAll(rr.Body)
+	if err != nil {
+		log.Fatal(err)
+		t.Error("Could not read body of response")
+	}
+	errMessage := "Solo se aceptan monedas de tipo VES y USD"
 	if string(body) != errMessage {
 		t.Errorf("response = %v, want %v", string(body), errMessage)
 	}
@@ -704,7 +764,7 @@ func TestPatchTransactionBadJson(t *testing.T) {
 		log.Fatal(err)
 		t.Error("Could not read body of response")
 	}
-	expected := "La data enviada no corresponde con una transacción parcial"
+	expected := "La data enviada no corresponde con una transacción"
 
 	if string(body) != expected {
 		t.Errorf("body = %v, want %v", string(body), expected)
@@ -854,18 +914,20 @@ func TestUnexecuteLastTransaction(t *testing.T) {
 	router.POST("/transactions", CreateTransaction)
 
 	transactionType := "input"
+	transactionCurrency := "USD"
 	transactionAmount := float32(42)
 	transactionDescription := "transaction to test unexecution"
 	bodyString := fmt.Sprintf(`
 	{
     "Type": "%v",
+		"Currency": "%v",
     "Amount": %v,
     "Description": "%v",
 		"Actor": {
 			"Id": 1
 		}
   }
-	`, transactionType, transactionAmount, transactionDescription)
+	`, transactionType, transactionCurrency, transactionAmount, transactionDescription)
 	transactionBody := strings.NewReader(bodyString)
 	req, err := http.NewRequest("POST", "/transactions", transactionBody)
 	if err != nil {
@@ -945,7 +1007,7 @@ func TestUnexecuteLastTransaction(t *testing.T) {
 	}
 
 	t.Log("testing second IdResponse.Id is less than last IdResponse by one")
-	if (transactionResponse.Id - 1 != lastIdAfterUnexecution.Id) {
+	if transactionResponse.Id-1 != lastIdAfterUnexecution.Id {
 		t.Errorf("lastIdBeforeUnexecution.Id = %v, lastIdAfterUnexecution.Id = %v", transactionResponse.Id, lastIdAfterUnexecution.Id)
 	}
 }

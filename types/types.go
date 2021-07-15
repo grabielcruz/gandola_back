@@ -3,9 +3,11 @@ package types
 type TransactionWithBalance struct {
 	Id          int
 	Type        string
+	Currency    string
 	Amount      float32
 	Description string
-	Balance     float32
+	USDBalance  float32
+	VESBalance  float32
 	Actor       struct {
 		Id   int
 		Name string
@@ -17,6 +19,7 @@ type TransactionWithBalance struct {
 type PendingTransaction struct {
 	Id          int
 	Type        string
+	Currency    string
 	Amount      float32
 	Description string
 	Actor       struct {

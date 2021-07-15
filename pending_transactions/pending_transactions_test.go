@@ -51,18 +51,20 @@ func TestCreatePendingTransaction(t *testing.T) {
 	router.POST("/pending_transactions", CreatePendingTransaction)
 
 	transactionType := "input"
+	transactionCurrency := "USD"
 	transactionAmount := float32(5)
 	transactionDescription := "abc"
 	bodyString := fmt.Sprintf(`
 	{
     "Type": "%v",
+		"Currency": "%v",
     "Amount": %v,
     "Description": "%v",
 		"Actor": {
 			"Id": 1
 		}
   }
-	`, transactionType, transactionAmount, transactionDescription)
+	`, transactionType, transactionCurrency, transactionAmount, transactionDescription)
 	transactionBody := strings.NewReader(bodyString)
 	req, err := http.NewRequest("POST", "/pending_transactions", transactionBody)
 	if err != nil {
@@ -103,18 +105,20 @@ func TestCreateTransactionWithoutType(t *testing.T) {
 	router.POST("/pending_transactions", CreatePendingTransaction)
 
 	transactionType := ""
+	transactionCurrency := "USD"
 	transactionAmount := float32(5)
 	transactionDescription := "abc"
 	bodyString := fmt.Sprintf(`
 	{
     "Type": "%v",
+		"Currency": "%v",
     "Amount": %v,
     "Description": "%v",
 		"Actor": {
 			"Id": 1
 		}
   }
-	`, transactionType, transactionAmount, transactionDescription)
+	`, transactionType, transactionCurrency, transactionAmount, transactionDescription)
 	transactionBody := strings.NewReader(bodyString)
 	req, err := http.NewRequest("POST", "/pending_transactions", transactionBody)
 	if err != nil {
@@ -134,7 +138,7 @@ func TestCreateTransactionWithoutType(t *testing.T) {
 		log.Fatal(err)
 		t.Error("Could not read body of response")
 	}
-	errMessage := "Debe especificar el tipo de transacción pendiente"
+	errMessage := "El tipo de transacción solo puede ser del tipo 'input' o 'output'"
 	if string(body) != errMessage {
 		t.Errorf("response = %v, want %v", string(body), errMessage)
 	}
@@ -145,18 +149,20 @@ func TestCreatePendingTransactionWithWrongType(t *testing.T) {
 	router.POST("/pending_transactions", CreatePendingTransaction)
 
 	transactionType := "noType"
+	transactionCurrency := "USD"
 	transactionAmount := float32(5)
 	transactionDescription := "abc"
 	bodyString := fmt.Sprintf(`
 	{
     "Type": "%v",
+		"Currency": "%v",
     "Amount": %v,
     "Description": "%v",
 		"Actor": {
 			"Id": 1
 		}
   }
-	`, transactionType, transactionAmount, transactionDescription)
+	`, transactionType, transactionCurrency, transactionAmount, transactionDescription)
 	transactionBody := strings.NewReader(bodyString)
 	req, err := http.NewRequest("POST", "/pending_transactions", transactionBody)
 	if err != nil {
@@ -176,7 +182,7 @@ func TestCreatePendingTransactionWithWrongType(t *testing.T) {
 		log.Fatal(err)
 		t.Error("Could not read body of response")
 	}
-	errMessage := "Debe especificar el tipo de transacción pendiente"
+	errMessage := "El tipo de transacción solo puede ser del tipo 'input' o 'output'"
 	if string(body) != errMessage {
 		t.Errorf("response = %v, want %v", string(body), errMessage)
 	}
@@ -187,18 +193,20 @@ func TestCreatePendingTransactionWithoutAmount(t *testing.T) {
 	router.POST("/pending_transactions", CreatePendingTransaction)
 
 	transactionType := "input"
+	transactionCurrency := "USD"
 	transactionAmount := float32(0)
 	transactionDescription := "abc"
 	bodyString := fmt.Sprintf(`
 	{
     "Type": "%v",
+		"Currency": "%v",
     "Amount": %v,
     "Description": "%v",
 		"Actor": {
 			"Id": 1
 		}
   }
-	`, transactionType, transactionAmount, transactionDescription)
+	`, transactionType, transactionCurrency, transactionAmount, transactionDescription)
 	transactionBody := strings.NewReader(bodyString)
 	req, err := http.NewRequest("POST", "/pending_transactions", transactionBody)
 	if err != nil {
@@ -229,18 +237,20 @@ func TestCreatePendingTransactionMoreThanMaximum(t *testing.T) {
 	router.POST("/pending_transactions", CreatePendingTransaction)
 
 	transactionType := "input"
+	transactionCurrency := "USD"
 	transactionAmount := float32(1e15)
 	transactionDescription := "abc"
 	bodyString := fmt.Sprintf(`
 	{
     "Type": "%v",
+		"Currency": "%v",
     "Amount": %v,
     "Description": "%v",
 		"Actor": {
 			"Id": 1
 		}
   }
-	`, transactionType, transactionAmount, transactionDescription)
+	`, transactionType, transactionCurrency, transactionAmount, transactionDescription)
 	transactionBody := strings.NewReader(bodyString)
 	req, err := http.NewRequest("POST", "/pending_transactions", transactionBody)
 	if err != nil {
@@ -271,18 +281,20 @@ func TestCreatePendingTransactionWithoutDescription(t *testing.T) {
 	router.POST("/pending_transactions", CreatePendingTransaction)
 
 	transactionType := "input"
+	transactionCurrency := "USD"
 	transactionAmount := float32(5)
 	transactionDescription := ""
 	bodyString := fmt.Sprintf(`
 	{
     "Type": "%v",
+		"Currency": "%v",
     "Amount": %v,
     "Description": "%v",
 		"Actor": {
 			"Id": 1
 		}
   }
-	`, transactionType, transactionAmount, transactionDescription)
+	`, transactionType, transactionCurrency, transactionAmount, transactionDescription)
 	transactionBody := strings.NewReader(bodyString)
 	req, err := http.NewRequest("POST", "/pending_transactions", transactionBody)
 	if err != nil {
@@ -313,18 +325,20 @@ func TestCreatePendingTransactionWithBadJson(t *testing.T) {
 	router.POST("/pending_transactions", CreatePendingTransaction)
 
 	transactionType := "input"
+	transactionCurrency := "USD"
 	transactionAmount := float32(5)
 	transactionDescription := "abc"
 	bodyString := fmt.Sprintf(`
 	{
     "Type": "%v",
+		"Currency": "%v",
     "Amount": %v,
     "Description": "%v",
 		"Actor": {
 			"Id": 1
 		},
   }
-	`, transactionType, transactionAmount, transactionDescription)
+	`, transactionType, transactionCurrency, transactionAmount, transactionDescription)
 	transactionBody := strings.NewReader(bodyString)
 	req, err := http.NewRequest("POST", "/pending_transactions", transactionBody)
 	if err != nil {
@@ -355,18 +369,20 @@ func TestCreatePendingTransactionWithNonExistingActor(t *testing.T) {
 	router.POST("/pending_transactions", CreatePendingTransaction)
 
 	transactionType := "input"
+	transactionCurrency := "USD"
 	transactionAmount := float32(5)
 	transactionDescription := "abc"
 	bodyString := fmt.Sprintf(`
 	{
     "Type": "%v",
+		"Currency": "%v",
     "Amount": %v,
     "Description": "%v",
 		"Actor": {
 			"Id": 9999
 		}
   }
-	`, transactionType, transactionAmount, transactionDescription)
+	`, transactionType, transactionCurrency, transactionAmount, transactionDescription)
 	transactionBody := strings.NewReader(bodyString)
 	req, err := http.NewRequest("POST", "/pending_transactions", transactionBody)
 	if err != nil {
@@ -387,6 +403,50 @@ func TestCreatePendingTransactionWithNonExistingActor(t *testing.T) {
 		t.Error("Could not read body of response")
 	}
 	errMessage := "El actor especificado no existe"
+	if string(body) != errMessage {
+		t.Errorf("response = %v, want %v", string(body), errMessage)
+	}
+}
+
+func TestCreatePendingTransactionWrongCurrency(t *testing.T) {
+	router := httprouter.New()
+	router.POST("/pending_transactions", CreatePendingTransaction)
+
+	transactionType := "input"
+	transactionCurrency := "wrong"
+	transactionAmount := float32(5)
+	transactionDescription := "abc"
+	bodyString := fmt.Sprintf(`
+	{
+    "Type": "%v",
+		"Currency": "%v",
+    "Amount": %v,
+    "Description": "%v",
+		"Actor": {
+			"Id": 1
+		}
+  }
+	`, transactionType, transactionCurrency, transactionAmount, transactionDescription)
+	transactionBody := strings.NewReader(bodyString)
+	req, err := http.NewRequest("POST", "/pending_transactions", transactionBody)
+	if err != nil {
+		log.Fatal(err)
+		t.Error("Could not make a post request to /pending_transactions")
+	}
+	rr := httptest.NewRecorder()
+	router.ServeHTTP(rr, req)
+	t.Log("testing bad request status code")
+	if status := rr.Code; status != http.StatusBadRequest {
+		t.Errorf("status = %v, want %v", status, http.StatusBadRequest)
+	}
+
+	t.Log("testing error message")
+	body, err := ioutil.ReadAll(rr.Body)
+	if err != nil {
+		log.Fatal(err)
+		t.Error("Could not read body of response")
+	}
+	errMessage := "Solo se aceptan monedas de tipo VES y USD"
 	if string(body) != errMessage {
 		t.Errorf("response = %v, want %v", string(body), errMessage)
 	}
@@ -425,18 +485,20 @@ func TestPatchPendingTransaction(t *testing.T) {
 	router.PATCH("/pending_transactions/:id", PatchPendingTransaction)
 	id := lastId.Id
 	transactionType := "output"
+	transactionCurrency := "USD"
 	amount := float32(5)
 	description := "patch pending transaction test"
 	bodyString := fmt.Sprintf(`
 		{
 			"Type": "%v",
+			"Currency": "%v",
 			"Amount": %v,
 			"Description": "%v",
 			"Actor": {
 				"Id": 1
 			}
 		}
-	`, transactionType, amount, description)
+	`, transactionType, transactionCurrency, amount, description)
 	transactionBody := strings.NewReader(bodyString)
 	urlRequest := fmt.Sprintf("/pending_transactions/%v", id)
 	req, err = http.NewRequest("PATCH", urlRequest, transactionBody)
@@ -513,18 +575,20 @@ func TestPatchPendingTransactionEmptyDescription(t *testing.T) {
 	router.PATCH("/pending_transactions/:id", PatchPendingTransaction)
 	id := lastId.Id
 	transactionType := "output"
+	transactionCurrency := "USD"
 	amount := float32(5)
 	description := ""
 	bodyString := fmt.Sprintf(`
 		{
 			"Type": "%v",
+			"Currency": "%v",
 			"Amount": %v,
 			"Description": "%v",
 			"Actor": {
 				"Id": 1
 			}
 		}
-	`, transactionType, amount, description)
+	`, transactionType, transactionCurrency, amount, description)
 	transactionBody := strings.NewReader(bodyString)
 	urlRequest := fmt.Sprintf("/pending_transactions/%v", id)
 	req2, err := http.NewRequest("PATCH", urlRequest, transactionBody)
@@ -586,18 +650,20 @@ func TestPatchPendingTransactionBadType(t *testing.T) {
 	router.PATCH("/pending_transactions/:id", PatchPendingTransaction)
 	id := lastId.Id
 	transactionType := "noType"
+	transactionCurrency := "USD"
 	amount := float32(5)
 	description := "bad type"
 	bodyString := fmt.Sprintf(`
 		{
 			"Type": "%v",
+			"Currency": "%v",
 			"Amount": %v,
 			"Description": "%v",
 			"Actor": {
 				"Id": 1
 			}
 		}
-	`, transactionType, amount, description)
+	`, transactionType, transactionCurrency, amount, description)
 	transactionBody := strings.NewReader(bodyString)
 	urlRequest := fmt.Sprintf("/pending_transactions/%v", id)
 	req2, err := http.NewRequest("PATCH", urlRequest, transactionBody)
@@ -659,18 +725,20 @@ func TestPatchPendingTransactionAmountZeroOrLess(t *testing.T) {
 	router.PATCH("/pending_transactions/:id", PatchPendingTransaction)
 	id := lastId.Id
 	transactionType := "input"
+	transactionCurrency := "USD"
 	amount := float32(0)
 	description := "amount zero"
 	bodyString := fmt.Sprintf(`
 		{
 			"Type": "%v",
+			"Currency": "%v",
 			"Amount": %v,
 			"Description": "%v",
 			"Actor": {
 				"Id": 1
 			}
 		}
-	`, transactionType, amount, description)
+	`, transactionType, transactionCurrency, amount, description)
 	transactionBody := strings.NewReader(bodyString)
 	urlRequest := fmt.Sprintf("/pending_transactions/%v", id)
 	req2, err := http.NewRequest("PATCH", urlRequest, transactionBody)
@@ -705,18 +773,20 @@ func TestPatchPendingTransactionZero(t *testing.T) {
 	router.PATCH("/pending_transactions/:id", PatchPendingTransaction)
 	id := 1
 	transactionType := "output"
+	transactionCurrency := "USD"
 	amount := float32(5)
 	description := "patching transaction zero"
 	bodyString := fmt.Sprintf(`
 		{
 			"Type": "%v",
+			"Currency": "%v",
 			"Amount": %v,
 			"Description": "%v",
 			"Actor": {
 				"Id": 1
 			}
 		}
-	`, transactionType, amount, description)
+	`, transactionType, transactionCurrency, amount, description)
 	transactionBody := strings.NewReader(bodyString)
 	urlRequest := fmt.Sprintf("/pending_transactions/%v", id)
 	req, err := http.NewRequest("PATCH", urlRequest, transactionBody)
@@ -751,18 +821,20 @@ func TestPatchPendingTransactionBadJson(t *testing.T) {
 	router.PATCH("/pending_transactions/:id", PatchPendingTransaction)
 	id := 2
 	transactionType := "output"
+	transactionCurrency := "USD"
 	amount := float32(5)
 	description := "patching transaction zero"
 	bodyString := fmt.Sprintf(`
 		{
 			"Type": "%v",
+			"Currency": "%v",
 			"Amount": %v,
 			"Description": "%v",
 			"Actor": {
 				"Id": 1
 			},
 		}
-	`, transactionType, amount, description)
+	`, transactionType, transactionCurrency, amount, description)
 	transactionBody := strings.NewReader(bodyString)
 	urlRequest := fmt.Sprintf("/pending_transactions/%v", id)
 	req, err := http.NewRequest("PATCH", urlRequest, transactionBody)
@@ -797,18 +869,20 @@ func TestPatchPendingTransactionNonExistingId(t *testing.T) {
 	router.PATCH("/pending_transactions/:id", PatchPendingTransaction)
 	id := 9999999
 	transactionType := "output"
+	transactionCurrency := "USD"
 	amount := float32(5)
 	description := "non existing id"
 	bodyString := fmt.Sprintf(`
 		{
 			"Type": "%v",
+			"Currency": "%v",
 			"Amount": %v,
 			"Description": "%v",
 			"Actor": {
 				"Id": 1
 			}
 		}
-	`, transactionType, amount, description)
+	`, transactionType, transactionCurrency, amount, description)
 	transactionBody := strings.NewReader(bodyString)
 	urlRequest := fmt.Sprintf("/pending_transactions/%v", id)
 	req, err := http.NewRequest("PATCH", urlRequest, transactionBody)
@@ -843,18 +917,20 @@ func TestPatchPendingTransactionNonExistingActor(t *testing.T) {
 	router.PATCH("/pending_transactions/:id", PatchPendingTransaction)
 	id := 9999999
 	transactionType := "output"
+	transactionCurrency := "USD"
 	amount := float32(5)
 	description := "non existing id"
 	bodyString := fmt.Sprintf(`
 		{
 			"Type": "%v",
+			"Currency": "%v",
 			"Amount": %v,
 			"Description": "%v",
 			"Actor": {
 				"Id": 9999
 			}
 		}
-	`, transactionType, amount, description)
+	`, transactionType, transactionCurrency, amount, description)
 	transactionBody := strings.NewReader(bodyString)
 	urlRequest := fmt.Sprintf("/pending_transactions/%v", id)
 	req, err := http.NewRequest("PATCH", urlRequest, transactionBody)
@@ -877,6 +953,54 @@ func TestPatchPendingTransactionNonExistingActor(t *testing.T) {
 		t.Error("Could not read body of response")
 	}
 	expected := "El actor especificado no existe"
+
+	if string(body) != expected {
+		t.Errorf("body = %v, want %v", string(body), expected)
+	}
+}
+
+func TestPatchPendingTransactionWrongCurrency(t *testing.T) {
+	router := httprouter.New()
+
+	router.PATCH("/pending_transactions/:id", PatchPendingTransaction)
+	id := 9999999
+	transactionType := "output"
+	transactionCurrency := "wrong"
+	amount := float32(5)
+	description := "non existing id"
+	bodyString := fmt.Sprintf(`
+		{
+			"Type": "%v",
+			"Currency": "%v",
+			"Amount": %v,
+			"Description": "%v",
+			"Actor": {
+				"Id": 1
+			}
+		}
+	`, transactionType, transactionCurrency, amount, description)
+	transactionBody := strings.NewReader(bodyString)
+	urlRequest := fmt.Sprintf("/pending_transactions/%v", id)
+	req, err := http.NewRequest("PATCH", urlRequest, transactionBody)
+	if err != nil {
+		log.Fatal(err)
+		t.Error("Could not make a patch request to /pending_transactions")
+	}
+	rr := httptest.NewRecorder()
+
+	router.ServeHTTP(rr, req)
+	t.Log("testing bad request status code")
+	if status := rr.Code; status != http.StatusBadRequest {
+		t.Errorf("status = %v, want %v", status, http.StatusBadRequest)
+	}
+
+	t.Log("testing patch pending transaction with non existing actor")
+	body, err := ioutil.ReadAll(rr.Body)
+	if err != nil {
+		log.Fatal(err)
+		t.Error("Could not read body of response")
+	}
+	expected := "Solo se aceptan monedas de tipo VES y USD"
 
 	if string(body) != expected {
 		t.Errorf("body = %v, want %v", string(body), expected)
@@ -1071,18 +1195,20 @@ func TestExecutePendingTransaction(t *testing.T) {
 	router.POST("/pending_transactions", CreatePendingTransaction)
 
 	transactionType := "input"
+	transactionCurrency := "USD"
 	transactionAmount := float32(42)
 	transactionDescription := "pending transaction for make execution"
 	bodyString := fmt.Sprintf(`
 	{
 		"Type": "%v",
+		"Currency": "%v",
 		"Amount": %v,
 		"Description": "%v",
 		"Actor": {
 			"Id": 1
 		}
 	}
-	`, transactionType, transactionAmount, transactionDescription)
+	`, transactionType, transactionCurrency, transactionAmount, transactionDescription)
 	transactionBody := strings.NewReader(bodyString)
 	req, err := http.NewRequest("POST", "/pending_transactions", transactionBody)
 	if err != nil {
