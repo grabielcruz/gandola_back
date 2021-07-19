@@ -25,7 +25,7 @@ func GetActors(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	defer rows.Close()
 	for rows.Next() {
 		actor := types.Actor{}
-		err = rows.Scan(&actor.Id, &actor.Name, &actor.Description, &actor.IsCompany, &actor.CreatedAt)
+		err = rows.Scan(&actor.Id, &actor.Type, &actor.Name, &actor.NationalId, &actor.Address, &actor.Notes, &actor.CreatedAt)
 		if err != nil {
 			utils.SendInternalServerError(err, w)
 			return
@@ -55,20 +55,20 @@ func CreateActor(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		fmt.Fprintf(w, "La data recibida no es del tipo Actor")
 		return
 	}
+	if actor.Type != "personnel" && actor.Type != "third" && actor.Type != "mine" && actor.Type != "contractee" {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(w, "Debe especificar el tipo de actor, el cual puede ser 'personal', 'tercero', 'mina' o 'contratante'")
+		return
+	}
 	if actor.Name == "" {
 		w.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintf(w, "Debe especificar el nombre del actor")
 		return
 	}
-	if actor.Description == "" {
-		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintf(w, "Debe especificar la descripción del actor")
-		return
-	}
 	db := database.ConnectDB()
 	defer db.Close()
 
-	insertActorQuery := fmt.Sprintf("INSERT INTO actors (name, description, is_company) VALUES ('%v', '%v', '%v') RETURNING id, name, description, is_company, created_at;", actor.Name, actor.Description, actor.IsCompany)
+	insertActorQuery := fmt.Sprintf("INSERT INTO actors (type, name, national_id, address, notes) VALUES ('%v', '%v', '%v', '%v', '%v') RETURNING id, type, name, national_id, address, notes, created_at;", actor.Type, actor.Name, actor.NationalId, actor.Address, actor.Notes)
 
 	rows, err := db.Query(insertActorQuery)
 	if err != nil {
@@ -87,7 +87,7 @@ func CreateActor(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		return
 	}
 	for rows.Next() {
-		err = rows.Scan(&actor.Id, &actor.Name, &actor.Description, &actor.IsCompany, &actor.CreatedAt)
+		err = rows.Scan(&actor.Id, &actor.Type, &actor.Name, &actor.NationalId, &actor.Address, &actor.Notes, &actor.CreatedAt)
 		if err != nil {
 			utils.SendInternalServerError(err, w)
 			return
@@ -132,14 +132,14 @@ func PatchActor(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		fmt.Fprintf(w, "La data enviada con corresponde con un actor parcial")
 		return
 	}
+	if actor.Type != "personnel" && actor.Type != "third" && actor.Type != "mine" && actor.Type != "contractee" {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(w, "Debe especificar el tipo de actor, el cual puede ser 'personal', 'tercero', 'mina' o 'contratante'")
+		return
+	}
 	if actor.Name == "" {
 		w.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintf(w, "Debe especificar el nombre del actor que desea modificar")
-		return
-	}
-	if actor.Description == "" {
-		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintf(w, "Debe especificar la descripción del actor que desea modificar")
 		return
 	}
 
@@ -147,7 +147,7 @@ func PatchActor(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	defer db.Close()
 
 	var updatedActor types.Actor
-	patchActorQuery := fmt.Sprintf("UPDATE actors SET name='%v', description='%v', is_company='%v' WHERE id='%v' RETURNING id, name, description, is_company, created_at;", actor.Name, actor.Description, actor.IsCompany, actorId)
+	patchActorQuery := fmt.Sprintf("UPDATE actors SET type='%v', name='%v', national_id='%v', address='%v', notes='%v' WHERE id='%v' RETURNING id, type, name, national_id, address, notes, created_at;", actor.Type, actor.Name, actor.NationalId, actor.Address, actor.Notes, actorId)
 	actorRow, err := db.Query(patchActorQuery)
 	if err != nil {
 		if err.Error() == "pq: duplicate key value violates unique constraint \"actors_name_key\"" {
@@ -160,7 +160,7 @@ func PatchActor(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	}
 	defer actorRow.Close()
 	for actorRow.Next() {
-		err = actorRow.Scan(&updatedActor.Id, &updatedActor.Name, &updatedActor.Description, &updatedActor.IsCompany, &updatedActor.CreatedAt)
+		err = actorRow.Scan(&updatedActor.Id, &updatedActor.Type, &updatedActor.Name, &updatedActor.NationalId, &updatedActor.Address, &updatedActor.Notes, &updatedActor.CreatedAt)
 		if err != nil {
 			utils.SendInternalServerError(err, w)
 			return
@@ -196,7 +196,7 @@ func GetLastActor(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 
 	defer rows.Close()
 	for rows.Next() {
-		err = rows.Scan(&lastActor.Id, &lastActor.Name, &lastActor.Description, &lastActor.IsCompany, &lastActor.CreatedAt)
+		err = rows.Scan(&lastActor.Id, &lastActor.Type, &lastActor.Name, &lastActor.NationalId, &lastActor.Address, &lastActor.Notes, &lastActor.CreatedAt)
 		if err != nil {
 			utils.SendInternalServerError(err, w)
 			return

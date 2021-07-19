@@ -31,9 +31,11 @@ type PendingTransaction struct {
 
 type Actor struct {
 	Id          int
-	Name        string
-	Description string
-	IsCompany   bool
+	Type        string
+	Name 				string
+	NationalId  string
+	Address     string
+	Notes 			string
 	CreatedAt   string
 }
 

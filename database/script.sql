@@ -7,16 +7,25 @@ CREATE DATABASE gandola_soft;
 CREATE TYPE transaction_type AS ENUM ('output', 'input');
 CREATE TYPE currency_type AS ENUM('USD', 'VES');
 CREATE TYPE urgency_type AS ENUM('low', 'medium', 'high', 'critical');
+CREATE TYPE actor_type AS ENUM('personnel', 'third', 'mine', 'contractee');
+
+-- tipos de actores:
+--   - El empleado: Luis D, papa, yo, Niliberto
+--   - El tercero: Mr frenos, toro mocho, ochoa, simpson
+--   - El saque: San Remo, Farias
+--   - El contratante: Cayucos, Nivar, Super S, Proporca, Bicolor
 
 CREATE TABLE actors (
   id SERIAL PRIMARY KEY,
+  type actor_type NOT NULL,
   name TEXT NOT NULL UNIQUE,
-  description TEXT NOT NULL,
-  is_company BOOLEAN NOT NULL DEFAULT FALSE,
+  national_id TEXT,
+  address TEXT,
+  notes TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
-INSERT INTO actors (name, description) VALUES ('Externo', 'renglón para actor no registrado');
+INSERT INTO actors (type, name, national_id, address, notes) VALUES ('third', 'Externo', 'no id', 'no address', 'no notes');
 
 CREATE TABLE transactions_with_balances (
   id SERIAL PRIMARY KEY,
