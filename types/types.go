@@ -30,13 +30,13 @@ type PendingTransaction struct {
 }
 
 type Actor struct {
-	Id          int
-	Type        string
-	Name 				string
-	NationalId  string
-	Address     string
-	Notes 			string
-	CreatedAt   string
+	Id         int
+	Type       string
+	Name       string
+	NationalId string
+	Address    string
+	Notes      string
+	CreatedAt  string
 }
 
 type Note struct {
@@ -46,6 +46,39 @@ type Note struct {
 	Attended    bool
 	CreatedAt   string
 	AttendedAt  string
+}
+
+type Bill struct {
+	Id        int
+	Url       string
+	Date      string
+	Company   string
+	Charged   bool
+	CreatedAt string
+}
+
+type Trip struct {
+	Id     int
+	Date   string
+	Origin struct {
+		Id         int
+		Name       string
+		NationalId string
+		Address    string
+	}
+	Destination struct {
+		Id         int
+		Name       string
+		NationalId string
+		Address    string
+	}
+	Cargo     string
+	Driver    string
+	Truck     string
+	Bill      string
+	Voucher   string
+	Completed bool
+	Notes     string
 }
 
 type IdResponse struct {

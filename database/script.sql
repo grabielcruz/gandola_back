@@ -8,7 +8,7 @@ CREATE TYPE transaction_type AS ENUM ('output', 'input');
 CREATE TYPE currency_type AS ENUM('USD', 'VES');
 CREATE TYPE urgency_type AS ENUM('low', 'medium', 'high', 'critical');
 CREATE TYPE actor_type AS ENUM('personnel', 'third', 'mine', 'contractee');
-
+CREATE EXTENSION CITEXT;
 -- tipos de actores:
 --   - El empleado: Luis D, papa, yo, Niliberto
 --   - El tercero: Mr frenos, toro mocho, ochoa, simpson
@@ -18,7 +18,7 @@ CREATE TYPE actor_type AS ENUM('personnel', 'third', 'mine', 'contractee');
 CREATE TABLE actors (
   id SERIAL PRIMARY KEY,
   type actor_type NOT NULL,
-  name TEXT NOT NULL UNIQUE,
+  name CITEXT NOT NULL UNIQUE,
   national_id TEXT,
   address TEXT,
   notes TEXT,
@@ -26,6 +26,33 @@ CREATE TABLE actors (
 );
 
 INSERT INTO actors (type, name, national_id, address, notes) VALUES ('third', 'Externo', 'no id', 'no address', 'no notes');
+
+CREATE TABLE bills (
+  id SERIAL PRIMARY KEY,
+  url TEXT NOT NULL,
+  date TIME WITH TIME ZONE DEFAULT CURRENT_TIME,
+  company INT REFERENCES actors(id) ON DELETE RESTRICT NOT NULL,
+  charged BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO bills (url, company) VALUES ('url', 1);
+
+CREATE TABLE trips (
+  id SERIAL PRIMARY KEY,
+  date TIME WITH TIME ZONE DEFAULT CURRENT_TIME,
+  origin INT REFERENCES actors(id) ON DELETE RESTRICT NOT NULL,
+  destination INT REFERENCES actors(id) ON DELETE RESTRICT NOT NULL,
+  cargo TEXT NOT NULL,
+  driver TEXT NOT NULL,
+  truck TEXT NOT NULL,
+  bill INT REFERENCES bills(id) ON DELETE RESTRICT,
+  voucher TEXT,
+  complete BOOLEAN NOT NULL DEFAULT FALSE,
+  notes TEXT 
+);
+
+INSERT INTO trips (origin, destination, cargo, driver, truck, voucher, notes) VALUES (1, 1, '25 metros piedra', 'chofer', 'camion', 'vauche', 'notes' );
 
 CREATE TABLE transactions_with_balances (
   id SERIAL PRIMARY KEY,
@@ -66,27 +93,6 @@ CREATE TABLE notes (
 );
 
 INSERT INTO notes (description, urgency) VALUES ('first note', 'low');
-
--- CREATE TABLE trip_bills (
---   id TEXT PRIMARY KEY,
---   url TEXT NOT NULL,
---   date TIME WITH TIME ZONE DEFAULT CURRENT_TIME,
---   company INT REFERENCES actors(id) ON DELETE RESTRICT NOT NULL,
---   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
--- );
-
--- CREATE TABLE trips (
---   id SERIAL PRIMARY KEY,
---   date TIME WITH TIME ZONE DEFAULT CURRENT_TIME,
---   origin TEXT NOT NULL,
---   destination TEXT NOT NULL,
---   cargo TEXT NOT NULL,
---   driver TEXT NOT NULL,
---   truck TEXT NOT NULL,
---   bill TEXT REFERENCES trip_bills(id) ON DELETE RESTRICT,
---   support TEXT,
---   notes TEXT 
--- );
 
 -- CREATE TABLE docs (
 --   id SERIAL PRIMARY KEY,
