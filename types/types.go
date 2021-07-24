@@ -49,10 +49,14 @@ type Note struct {
 }
 
 type Bill struct {
-	Id        int
-	Url       string
-	Date      string
-	Company   string
+	Id      int
+	Url     string
+	Date    string
+	Company struct {
+		Id         int
+		Name       string
+		NationalId string
+	}
 	Charged   bool
 	CreatedAt string
 }

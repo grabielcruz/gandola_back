@@ -30,7 +30,7 @@ INSERT INTO actors (type, name, national_id, address, notes) VALUES ('third', 'E
 CREATE TABLE bills (
   id SERIAL PRIMARY KEY,
   url TEXT NOT NULL,
-  date TIME WITH TIME ZONE DEFAULT CURRENT_TIME,
+  date TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
   company INT REFERENCES actors(id) ON DELETE RESTRICT NOT NULL,
   charged BOOLEAN NOT NULL DEFAULT FALSE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
@@ -40,7 +40,7 @@ INSERT INTO bills (url, company) VALUES ('url', 1);
 
 CREATE TABLE trips (
   id SERIAL PRIMARY KEY,
-  date TIME WITH TIME ZONE DEFAULT CURRENT_TIME,
+  date TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
   origin INT REFERENCES actors(id) ON DELETE RESTRICT NOT NULL,
   destination INT REFERENCES actors(id) ON DELETE RESTRICT NOT NULL,
   cargo TEXT NOT NULL,
@@ -49,7 +49,9 @@ CREATE TABLE trips (
   bill INT REFERENCES bills(id) ON DELETE RESTRICT,
   voucher TEXT,
   complete BOOLEAN NOT NULL DEFAULT FALSE,
-  notes TEXT 
+  notes TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+
 );
 
 INSERT INTO trips (origin, destination, cargo, driver, truck, voucher, notes) VALUES (1, 1, '25 metros piedra', 'chofer', 'camion', 'vauche', 'notes' );

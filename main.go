@@ -5,6 +5,8 @@ import (
 	"net/http"
 
 	"example.com/backend_gandola_soft/actors"
+	"example.com/backend_gandola_soft/bills"
+	"example.com/backend_gandola_soft/handle_uploads"
 	"example.com/backend_gandola_soft/notes"
 	"example.com/backend_gandola_soft/pending_transactions"
 	"example.com/backend_gandola_soft/transactions"
@@ -51,6 +53,12 @@ func main() {
 	router.DELETE("/notes/:id", CustomOptions(notes.DeleteNote))
 	router.PUT("/attend_note/:id", CustomOptions(notes.AttendNote))
 	router.PUT("/unattend_note/:id", CustomOptions(notes.UnattendNote))
+
+	router.GET("/bills", CustomOptions(bills.GetBills))
+	router.POST("/bills", CustomOptions(bills.CreateBill))
+
+	router.ServeFiles("/public/*filepath", http.Dir("./public"))
+	router.POST("/upload/:id", CustomOptions(handle_uploads.UploadFile))
 
 	log.Fatal(http.ListenAndServe(":8080", router))
 }
