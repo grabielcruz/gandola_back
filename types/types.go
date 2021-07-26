@@ -76,10 +76,13 @@ type Trip struct {
 		NationalId string
 		Address    string
 	}
-	Cargo     string
-	Driver    string
-	Truck     string
-	Bill      string
+	Cargo  string
+	Driver string
+	Truck  string
+	Bill   struct {
+		Id      int
+		Charged bool
+	}
 	Voucher   string
 	Completed bool
 	Notes     string

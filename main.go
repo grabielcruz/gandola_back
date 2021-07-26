@@ -32,20 +32,17 @@ func main() {
 	router.PATCH("/transactions/:id", CustomOptions(transactions.PatchTransaction))
 	router.DELETE("/transactions", CustomOptions(transactions.DeleteLastTransaction))
 	router.PUT("/transactions", CustomOptions(transactions.UnexecuteLastTransaction))
-	// router.GET("/lasttransactionid", CustomOptions(transactions.GetLastTransactionId)) //mostly for testing porpuses
 
 	router.GET("/pending_transactions", CustomOptions(pending_transactions.GetPendingTransactions))
 	router.POST("/pending_transactions", CustomOptions(pending_transactions.CreatePendingTransaction))
 	router.PATCH("/pending_transactions/:id", CustomOptions(pending_transactions.PatchPendingTransaction))
 	router.DELETE("/pending_transactions/:id", CustomOptions(pending_transactions.DeletePendingTransaction))
 	router.PUT("/pending_transactions/:id", CustomOptions(pending_transactions.ExecutePendingTransaction))
-	// router.GET("/lastpendingtransactionid", CustomOptions(pending_transactions.GetLastTransactionId)) //mostly for testing porpuses
 
 	router.GET("/actors", CustomOptions(actors.GetActors))
 	router.POST("/actors", CustomOptions(actors.CreateActor))
 	router.PATCH("/actors/:id", CustomOptions(actors.PatchActor))
 	router.DELETE("/actors/:id", CustomOptions(actors.DeleteActor))
-	// router.GET("/lastactor", CustomOptions(actors.GetLastActor))
 
 	router.GET("/notes", CustomOptions(notes.GetNotes))
 	router.POST("/notes", CustomOptions(notes.CreateNote))
@@ -56,6 +53,8 @@ func main() {
 
 	router.GET("/bills", CustomOptions(bills.GetBills))
 	router.POST("/bills", CustomOptions(bills.CreateBill))
+	router.PATCH("/bills/:id", CustomOptions(bills.PatchBill))
+	router.DELETE("/bills/:id", CustomOptions(bills.DeleteBill))//TODO: delete actual image when deleting bill
 
 	router.ServeFiles("/public/*filepath", http.Dir("./public"))
 	router.POST("/upload/:id", CustomOptions(handle_uploads.UploadFile))

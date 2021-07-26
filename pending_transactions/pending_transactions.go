@@ -470,7 +470,7 @@ func GetLastTransactionId(w http.ResponseWriter, r *http.Request, _ httprouter.P
 	}
 	db := database.ConnectDB()
 	defer db.Close()
-	query := "SELECT id FROM pending_transactions ORDER BY id desc LIMIT 1;"
+	query := "SELECT id FROM pending_transactions ORDER BY id DESC LIMIT 1;"
 	rows, err := db.Query(query)
 	if err != nil {
 		utils.SendInternalServerError(err, w)

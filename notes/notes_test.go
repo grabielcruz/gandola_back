@@ -639,7 +639,7 @@ func TestDeleteActor(t *testing.T) {
 	}
 }
 
-func TestDeleteActorBadId(t *testing.T) {
+func TestDeleteActorZeroId(t *testing.T) {
 	router := httprouter.New()
 
 	router.DELETE("/notes/:id", DeleteNote)
@@ -664,6 +664,36 @@ func TestDeleteActorBadId(t *testing.T) {
 		t.Error("Could not read body of response")
 	}
 	wanted := "Id de nota no válido"
+	if wanted != string(body2) {
+		t.Errorf("Response body = '%v', wanted = '%v'", string(body2), wanted)
+	}
+}
+
+func TestDeleteActorbadId(t *testing.T) {
+	router := httprouter.New()
+
+	router.DELETE("/notes/:id", DeleteNote)
+	requestUrl := fmt.Sprintf("/notes/%v", 9999)
+
+	req2, err := http.NewRequest("DELETE", requestUrl, nil)
+	if err != nil {
+		log.Fatal(err)
+		t.Error("Could not make a delete request to /notes/:id")
+	}
+	rr2 := httptest.NewRecorder()
+	router.ServeHTTP(rr2, req2)
+	t.Log("testing OK request status code for deleting last note")
+	if status := rr2.Code; status != http.StatusBadRequest {
+		t.Errorf("status = %v, want %v", status, http.StatusBadRequest)
+	}
+
+	t.Log("testing getting back an IdResponse from delete request")
+	body2, err := ioutil.ReadAll(rr2.Body)
+	if err != nil {
+		log.Fatal(err)
+		t.Error("Could not read body of response")
+	}
+	wanted := "La nota con el id 9999 no existe"
 	if wanted != string(body2) {
 		t.Errorf("Response body = '%v', wanted = '%v'", string(body2), wanted)
 	}
