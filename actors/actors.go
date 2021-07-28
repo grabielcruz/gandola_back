@@ -41,6 +41,34 @@ func GetActors(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	w.Write(json_actors)
 }
 
+func GetCompanies(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	actors := []types.Actor{}
+	db := database.ConnectDB()
+	defer db.Close()
+	rows, err := db.Query("SELECT * FROM actors WHERE type='mine' OR type='contractee' ORDER BY id ASC;")
+	if err != nil {
+		utils.SendInternalServerError(err, w)
+		return
+	}
+	defer rows.Close()
+	for rows.Next() {
+		actor := types.Actor{}
+		err = rows.Scan(&actor.Id, &actor.Type, &actor.Name, &actor.NationalId, &actor.Address, &actor.Notes, &actor.CreatedAt)
+		if err != nil {
+			utils.SendInternalServerError(err, w)
+			return
+		}
+		actors = append(actors, actor)
+	}
+	json_actors, err := json.Marshal(actors)
+	if err != nil {
+		utils.SendInternalServerError(err, w)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(json_actors)
+}
+
 func CreateActor(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	actor := types.Actor{}
 	body, err := ioutil.ReadAll(r.Body)
@@ -240,6 +268,11 @@ func DeleteActor(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	query := fmt.Sprintf("DELETE FROM actors WHERE id='%v' RETURNING id;", actorId)
 	rows, err := db.Query(query)
 	if err != nil {
+		if err.Error() == "pq: update or delete on table \"actors\" violates foreign key constraint \"bills_company_fkey\" on table \"bills\"" {
+			w.WriteHeader(http.StatusBadRequest)
+			fmt.Fprintf(w, "El actor que intenta borrar tiene una o mas facturas asociadas por lo que no puede ser eliminado")
+			return
+		}
 		if err.Error() == "pq: update or delete on table \"actors\" violates foreign key constraint \"transactions_with_balances_actor_fkey\" on table \"transactions_with_balances\"" {
 			w.WriteHeader(http.StatusBadRequest)
 			fmt.Fprintf(w, "El actor que intenta borrar tiene una o mas transacciones asociadas por lo que no puede ser eliminado")

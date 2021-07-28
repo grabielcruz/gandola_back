@@ -50,10 +50,11 @@ func TestCreateBill(t *testing.T) {
 	router := httprouter.New()
 	router.POST("/bills", CreateBill)
 
-	companyId := 1
-	date := time.Now().Local().Format(time.RFC3339)
+	companyId := 2
+	date := time.Now().Local().Format(types.DateFormat)
 	
 	newBill := types.Bill{}
+	newBill.Code = "1234"
 	newBill.Date = date
 	newBill.Company.Id = companyId
 	newBillString, err := json.Marshal(newBill)
@@ -80,7 +81,6 @@ func TestCreateBill(t *testing.T) {
 		log.Fatal(err)
 		t.Error("Could not read body of response")
 	}
-
 	err = json.Unmarshal(body, &requestResponse)
 	if err != nil {
 		log.Fatal(err)
@@ -96,9 +96,10 @@ func TestCreateBillWithoutdate(t *testing.T) {
 	router := httprouter.New()
 	router.POST("/bills", CreateBill)
 
-	companyId := 1
+	companyId := 2
 	
 	newBill := types.Bill{}
+	newBill.Code = "1234"
 	newBill.Company.Id = companyId
 	newBillString, err := json.Marshal(newBill)
 	if err != nil {
@@ -136,12 +137,52 @@ func TestCreateBillWithoutdate(t *testing.T) {
 	}
 }
 
+func TestCreateBillBaCompanyType(t *testing.T) {
+	router := httprouter.New()
+	router.POST("/bills", CreateBill)
+
+	companyId := 1
+	
+	newBill := types.Bill{}
+	newBill.Code = "1234"
+	newBill.Company.Id = companyId
+	newBillString, err := json.Marshal(newBill)
+	if err != nil {
+		t.Log("error on generating new bill")
+	}
+	requestBody := strings.NewReader(string(newBillString))
+	req, err := http.NewRequest("POST", "/bills", requestBody)
+	if err != nil {
+		log.Fatal(err)
+		t.Error("Could not make a post request to /bills")
+	}
+	rr := httptest.NewRecorder()
+	router.ServeHTTP(rr, req)
+	t.Log("testing Ok status code")
+	if status := rr.Code; status != http.StatusBadRequest {
+		t.Errorf("status = %v, want %v", status, http.StatusBadRequest)
+	}
+
+	t.Log("testing create bill success")
+	body, err := ioutil.ReadAll(rr.Body)
+	if err != nil {
+		log.Fatal(err)
+		t.Error("Could not read body of response")
+	}
+
+	wanted := "La compañía especificada no es mina o contratante"
+	response := string(body)
+	if response != wanted {
+		t.Errorf("response = '%v', wanted = '%v'", response, wanted)
+	}
+}
 
 func TestCreateBillWithoutCompany(t *testing.T) {
 	router := httprouter.New()
 	router.POST("/bills", CreateBill)
 
 	newBill := types.Bill{}
+	newBill.Code = "1234"
 	newBillString, err := json.Marshal(newBill)
 	if err != nil {
 		t.Log("error on generating new bill")
@@ -177,6 +218,7 @@ func TestCreateBillNonExistingCompany(t *testing.T) {
 	router.POST("/bills", CreateBill)
 
 	newBill := types.Bill{}
+	newBill.Code = "1234"
 	newBill.Company.Id = 99999
 	newBillString, err := json.Marshal(newBill)
 	if err != nil {
@@ -213,8 +255,9 @@ func TestCreateBillBadDate(t *testing.T) {
 	router.POST("/bills", CreateBill)
 
 	newBill := types.Bill{}
+	newBill.Code = "1234"
 	newBill.Date = "bad date"
-	newBill.Company.Id = 1
+	newBill.Company.Id = 2
 	newBillString, err := json.Marshal(newBill)
 	if err != nil {
 		t.Log("error on generating new bill")
@@ -279,9 +322,10 @@ func TestPatchBill(t *testing.T) {
 	router.PATCH("/bills/:id", PatchBill)
 	requestUrl := fmt.Sprintf("/bills/%v", lastBillId.Id)
 	newBill := types.Bill{}
+	newBill.Code = "1234"
 	newBill.Url = "new_photo.jpg"
-	newBill.Date = time.Now().Local().Format(time.RFC3339)
-	newBill.Company.Id = 1
+	newBill.Date = time.Now().Local().Format(types.DateFormat)
+	newBill.Company.Id = 2
 	newBill.Charged = true
 	newBillJson, err := json.Marshal(newBill)
 	if err != nil {
@@ -348,9 +392,10 @@ func TestPatchBillBadDate(t *testing.T) {
 	router.PATCH("/bills/:id", PatchBill)
 	requestUrl := fmt.Sprintf("/bills/%v", lastBillId.Id)
 	newBill := types.Bill{}
+	newBill.Code = "1234"
 	newBill.Url = "new_photo.jpg"
 	newBill.Date = "bad date"
-	newBill.Company.Id = 1
+	newBill.Company.Id = 2
 	newBill.Charged = true
 	newBillJson, err := json.Marshal(newBill)
 	if err != nil {
@@ -417,8 +462,9 @@ func TestPatchBillNoCompany(t *testing.T) {
 	router.PATCH("/bills/:id", PatchBill)
 	requestUrl := fmt.Sprintf("/bills/%v", lastBillId.Id)
 	newBill := types.Bill{}
+	newBill.Code = "1234"
 	newBill.Url = "new_photo.jpg"
-	newBill.Date = time.Now().Local().Format(time.RFC3339)
+	newBill.Date = time.Now().Local().Format(types.DateFormat)
 	newBill.Charged = true
 	newBillJson, err := json.Marshal(newBill)
 	if err != nil {
@@ -449,6 +495,76 @@ func TestPatchBillNoCompany(t *testing.T) {
 		t.Errorf("response = '%v', wanted='%v'", response, wanted)
 	}
 }
+
+func TestPatchBillBadCompanyType(t *testing.T) {
+	router := httprouter.New()
+	router.GET("/lastbillid", GetLastBillId)
+
+	var lastBillId types.IdResponse
+	req, err := http.NewRequest("GET", "/lastbillid", nil)
+	if err != nil {
+		log.Fatal(err)
+		t.Error("Could not make a get request to /lastbillid")
+	}
+
+	rr := httptest.NewRecorder()
+	router.ServeHTTP(rr, req)
+
+	t.Log("testing OK request status code for getting las bill id")
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("status = %v, want %v", status, http.StatusOK)
+	}
+
+	body, err := ioutil.ReadAll(rr.Body)
+	if err != nil {
+		log.Fatal(err)
+		t.Error("Could not read body of response")
+	}
+
+	t.Log("testing body response to be of IdResponse type")
+	err = json.Unmarshal(body, &lastBillId)
+	if err != nil {
+		t.Error("Response is not of type IdResponse")
+	}
+
+	router.PATCH("/bills/:id", PatchBill)
+	requestUrl := fmt.Sprintf("/bills/%v", lastBillId.Id)
+	newBill := types.Bill{}
+	newBill.Code = "1234"
+	newBill.Url = "new_photo.jpg"
+	newBill.Company.Id = 1
+	newBill.Date = time.Now().Local().Format(types.DateFormat)
+	newBill.Charged = true
+	newBillJson, err := json.Marshal(newBill)
+	if err != nil {
+		t.Error("Could not marshal new bill into json")
+	}
+	requestBody := strings.NewReader(string(newBillJson))
+	req2, err := http.NewRequest("PATCH", requestUrl, requestBody)
+	if err != nil {
+		log.Fatal(err)
+		t.Error("Could not make a patch request to /bills/:id")
+	}
+	rr2 := httptest.NewRecorder()
+	router.ServeHTTP(rr2, req2)
+	t.Log("testing bad request status code for patching last note")
+	if status := rr2.Code; status != http.StatusBadRequest {
+		t.Errorf("status = %v, want %v", status, http.StatusBadRequest)
+	}
+
+	t.Log("testing getting back a bill from patch request")
+	body2, err := ioutil.ReadAll(rr2.Body)
+	if err != nil {
+		log.Fatal(err)
+		t.Error("Could not read body of response")
+	}
+	response := string(body2)
+	wanted := "La compañía especificada no es mina o contratante"
+	if response != wanted {
+		t.Errorf("response = '%v', wanted='%v'", response, wanted)
+	}
+}
+
 
 func TestPatchBillNonExistingCompany(t *testing.T) {
 	router := httprouter.New()
@@ -484,8 +600,9 @@ func TestPatchBillNonExistingCompany(t *testing.T) {
 	router.PATCH("/bills/:id", PatchBill)
 	requestUrl := fmt.Sprintf("/bills/%v", lastBillId.Id)
 	newBill := types.Bill{}
+	newBill.Code = "1234"
 	newBill.Url = "new_photo.jpg"
-	newBill.Date = time.Now().Local().Format(time.RFC3339)
+	newBill.Date = time.Now().Local().Format(types.DateFormat)
 	newBill.Company.Id = 9999
 	newBill.Charged = true
 	newBillJson, err := json.Marshal(newBill)
@@ -525,8 +642,9 @@ func TestPatchBillBadId(t *testing.T) {
 	router.PATCH("/bills/:id", PatchBill)
 	requestUrl := fmt.Sprintf("/bills/%v", 0)
 	newBill := types.Bill{}
+	newBill.Code = "1234"
 	newBill.Url = "new_photo.jpg"
-	newBill.Date = time.Now().Local().Format(time.RFC3339)
+	newBill.Date = time.Now().Local().Format(types.DateFormat)
 	newBill.Charged = true
 	newBillJson, err := json.Marshal(newBill)
 	if err != nil {
@@ -565,9 +683,10 @@ func TestPatchBillNonExistingId(t *testing.T) {
 	router.PATCH("/bills/:id", PatchBill)
 	requestUrl := fmt.Sprintf("/bills/%v", 999999)
 	newBill := types.Bill{}
+	newBill.Code = "1234"
 	newBill.Url = "new_photo.jpg"
-	newBill.Date = time.Now().Local().Format(time.RFC3339)
-	newBill.Company.Id = 1
+	newBill.Date = time.Now().Local().Format(types.DateFormat)
+	newBill.Company.Id = 2
 	newBill.Charged = true
 	newBillJson, err := json.Marshal(newBill)
 	if err != nil {

@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"example.com/backend_gandola_soft/database"
@@ -18,7 +19,7 @@ func GetBills(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	bills :=[]types.Bill{}
 	db := database.ConnectDB();
 	defer db.Close();
-	rows, err := db.Query("SELECT bills.id, url, date, charged, company, name, national_id, bills.created_at FROM bills INNER JOIN actors ON bills.company = actors.id;")
+	rows, err := db.Query("SELECT bills.id, code, url, date, charged, company, name, national_id, bills.created_at FROM bills INNER JOIN actors ON bills.company = actors.id;")
 	if err != nil {
 		utils.SendInternalServerError(err, w)
 		return
@@ -26,11 +27,12 @@ func GetBills(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	defer rows.Close()
 	for rows.Next() {
 		bill := types.Bill{}
-	  err = rows.Scan(&bill.Id, &bill.Url, &bill.Date, &bill.Charged, &bill.Company.Id, &bill.Company.Name, &bill.Company.NationalId, &bill.CreatedAt)
+	  err = rows.Scan(&bill.Id, &bill.Code, &bill.Url, &bill.Date, &bill.Charged, &bill.Company.Id, &bill.Company.Name, &bill.Company.NationalId, &bill.CreatedAt)
 		if err != nil {
 			utils.SendInternalServerError(err, w)
 			return
 		}
+		bill.Date = strings.Split(bill.Date, "T")[0]
 		bills = append(bills, bill)
 	}
 	json_bills, err := json.Marshal(bills)
@@ -58,11 +60,11 @@ func CreateBill(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		return
 	}
 
-	// if bill.Url == "" {
-	// 	w.WriteHeader(http.StatusBadRequest)
-	// 	fmt.Fprintf(w, "Debe especificar el url del archivo de la factura")
-	// 	return
-	// }
+	if bill.Code == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(w, "Debe especificar el código de la factura")
+		return
+	}
 
 	if bill.Company.Id == 0 {
 		w.WriteHeader(http.StatusBadRequest)
@@ -74,7 +76,8 @@ func CreateBill(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	defer db.Close()
 
 	var companyId int
-	getCompanyIdQuery := fmt.Sprintf("SELECT id FROM actors WHERE id=%v;", bill.Company.Id)
+	var companyType string
+	getCompanyIdQuery := fmt.Sprintf("SELECT id, type FROM actors WHERE id=%v;", bill.Company.Id)
 	companyIdRow, err := db.Query(getCompanyIdQuery)
 	if err != nil {
 		utils.SendInternalServerError(err, w)
@@ -82,7 +85,7 @@ func CreateBill(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	}
 	defer companyIdRow.Close()
 	for companyIdRow.Next() {
-		err = companyIdRow.Scan(&companyId)
+		err = companyIdRow.Scan(&companyId, &companyType)
 		if err != nil {
 			utils.SendInternalServerError(err, w)
 			return
@@ -95,18 +98,24 @@ func CreateBill(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		return
 	}
 
+	if companyType != "contractee" && companyType != "mine" {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(w, "La compañía especificada no es mina o contratante")
+		return
+	}
+
 	var insertedId int
 	var insertBillQuery string
 	if  bill.Date == "" {
-		insertBillQuery = fmt.Sprintf("INSERT INTO bills (url, company, charged) VALUES ('%v', '%v', '%v') RETURNING id;", bill.Url, bill.Company.Id, bill.Charged)
+		insertBillQuery = fmt.Sprintf("INSERT INTO bills (code, url, company, charged) VALUES ('%v', '%v', '%v', '%v') RETURNING id;", bill.Code, bill.Url, bill.Company.Id, bill.Charged)
 	} else {
-		_, err := time.Parse(time.RFC3339, bill.Date)
+		_, err := time.Parse(types.DateFormat, bill.Date)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			fmt.Fprintf(w, "La fecha de la factura no tiene un formato válido")
 			return
 		}
-		insertBillQuery = fmt.Sprintf("INSERT INTO bills (url, date, company, charged) VALUES ('%v', '%v', '%v', '%v') RETURNING id;", bill.Url, bill.Date, bill.Company.Id, bill.Charged)
+		insertBillQuery = fmt.Sprintf("INSERT INTO bills (code, url, date, company, charged) VALUES ('%v', '%v', '%v', '%v', '%v') RETURNING id;", bill.Code, bill.Url, bill.Date, bill.Company.Id, bill.Charged)
 	}
 
 	rowsInsertedId, err := db.Query(insertBillQuery)
@@ -124,7 +133,7 @@ func CreateBill(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	}
 
 	insertedBill := types.Bill{}
-	retrieveBillQuery := fmt.Sprintf("SELECT bills.id, url, date, charged, company, name, national_id, bills.created_at FROM bills INNER JOIN actors ON bills.company = actors.id WHERE bills.id='%v';", insertedId)
+	retrieveBillQuery := fmt.Sprintf("SELECT bills.id, code, url, date, charged, company, name, national_id, bills.created_at FROM bills INNER JOIN actors ON bills.company = actors.id WHERE bills.id='%v';", insertedId)
 	rowsRetreivedBill, err := db.Query(retrieveBillQuery)
 	if err != nil {
 		utils.SendInternalServerError(err, w)
@@ -132,12 +141,13 @@ func CreateBill(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	}
 	defer rowsRetreivedBill.Close()
 	for rowsRetreivedBill.Next() {
-		err = rowsRetreivedBill.Scan(&insertedBill.Id, &insertedBill.Url, &insertedBill.Date, &insertedBill.Charged, &insertedBill.Company.Id, &insertedBill.Company.Name, &insertedBill.Company.NationalId, &insertedBill.CreatedAt)
+		err = rowsRetreivedBill.Scan(&insertedBill.Id, &insertedBill.Code, &insertedBill.Url, &insertedBill.Date, &insertedBill.Charged, &insertedBill.Company.Id, &insertedBill.Company.Name, &insertedBill.Company.NationalId, &insertedBill.CreatedAt)
 		if err != nil {
 			utils.SendInternalServerError(err, w)
 			return
 		}
 	}
+	insertedBill.Date = strings.Split(insertedBill.Date, "T")[0]
 
 	response, err := json.Marshal(insertedBill)
 	if err != nil {
@@ -147,6 +157,7 @@ func CreateBill(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(response)
 }
+
 
 func PatchBill(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	requestedId := ps.ByName("id")
@@ -182,11 +193,18 @@ func PatchBill(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		return
 	}
 
+	if newBill.Code == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(w, "Debe especificar el código de la factura")
+		return
+	}
+
 	db := database.ConnectDB()
 	defer db.Close()
 
 	var companyId int
-	getCompanyIdQuery := fmt.Sprintf("SELECT id FROM actors WHERE id=%v;", newBill.Company.Id)
+	var companyType string
+	getCompanyIdQuery := fmt.Sprintf("SELECT id, type FROM actors WHERE id=%v;", newBill.Company.Id)
 	companyIdRow, err := db.Query(getCompanyIdQuery)
 	if err != nil {
 		utils.SendInternalServerError(err, w)
@@ -194,7 +212,7 @@ func PatchBill(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	}
 	defer companyIdRow.Close()
 	for companyIdRow.Next() {
-		err = companyIdRow.Scan(&companyId)
+		err = companyIdRow.Scan(&companyId, &companyType)
 		if err != nil {
 			utils.SendInternalServerError(err, w)
 			return
@@ -207,18 +225,24 @@ func PatchBill(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		return
 	}
 
+	if companyType != "contractee" && companyType != "mine" {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(w, "La compañía especificada no es mina o contratante")
+		return
+	}
+	
 	var updatedId int
 	var updateBillQuery string
 	if newBill.Date == "" {
-		updateBillQuery = fmt.Sprintf("UPDATE bills SET url='%v', company='%v', charged='%v' WHERE id='%v' RETURNING id;", newBill.Url, newBill.Company.Id, newBill.Charged, billsId)
+		updateBillQuery = fmt.Sprintf("UPDATE bills SET code='%v', url='%v', company='%v', charged='%v' WHERE id='%v' RETURNING id;", newBill.Code, newBill.Url, newBill.Company.Id, newBill.Charged, billsId)
 	} else {
-		_, err := time.Parse(time.RFC3339, newBill.Date)
+		_, err := time.Parse(types.DateFormat, newBill.Date)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			fmt.Fprintf(w, "La fecha de la factura no tiene un formato válido")
 			return
 		}
-		updateBillQuery = fmt.Sprintf("UPDATE bills SET url='%v', date='%v', company='%v', charged='%v' WHERE id='%v' RETURNING id;", newBill.Url, newBill.Date, newBill.Company.Id, newBill.Charged, billsId)
+		updateBillQuery = fmt.Sprintf("UPDATE bills SET code='%v', url='%v', date='%v', company='%v', charged='%v' WHERE id='%v' RETURNING id;", newBill.Code, newBill.Url, newBill.Date, newBill.Company.Id, newBill.Charged, billsId)
 	}
 
 	rowsUpdatedId, err := db.Query(updateBillQuery)
@@ -242,7 +266,7 @@ func PatchBill(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	}
 
 	updatedBill := types.Bill{}
-	retrieveBillQuery := fmt.Sprintf("SELECT bills.id, url, date, charged, company, name, national_id, bills.created_at FROM bills INNER JOIN actors ON bills.company = actors.id WHERE bills.id='%v';", updatedId)
+	retrieveBillQuery := fmt.Sprintf("SELECT bills.id, code, url, date, charged, company, name, national_id, bills.created_at FROM bills INNER JOIN actors ON bills.company = actors.id WHERE bills.id='%v';", updatedId)
 	rowsRetreivedBill, err := db.Query(retrieveBillQuery)
 	if err != nil {
 		utils.SendInternalServerError(err, w)
@@ -251,13 +275,13 @@ func PatchBill(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 
 	defer rowsRetreivedBill.Close()
 	for rowsRetreivedBill.Next() {
-		err = rowsRetreivedBill.Scan(&updatedBill.Id, &updatedBill.Url, &updatedBill.Date, &updatedBill.Charged, &updatedBill.Company.Id, &updatedBill.Company.Name, &updatedBill.Company.NationalId, &updatedBill.CreatedAt)
+		err = rowsRetreivedBill.Scan(&updatedBill.Id, &updatedBill.Code, &updatedBill.Url, &updatedBill.Date, &updatedBill.Charged, &updatedBill.Company.Id, &updatedBill.Company.Name, &updatedBill.Company.NationalId, &updatedBill.CreatedAt)
 		if err != nil {
 			utils.SendInternalServerError(err, w)
 			return
 		}
 	}
-
+	updatedBill.Date = strings.Split(updatedBill.Date, "T")[0]
 	response, err := json.Marshal(updatedBill)
 	if err != nil {
 		utils.SendInternalServerError(err, w)

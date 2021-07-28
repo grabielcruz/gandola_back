@@ -26,17 +26,19 @@ CREATE TABLE actors (
 );
 
 INSERT INTO actors (type, name, national_id, address, notes) VALUES ('third', 'Externo', 'no id', 'no address', 'no notes');
+INSERT INTO actors (type, name, national_id, address, notes) VALUES ('contractee', 'Compañía cero', 'no id', 'no address', 'no notes');
 
 CREATE TABLE bills (
   id SERIAL PRIMARY KEY,
+  code TEXT NOT NULL,
   url TEXT NOT NULL,
-  date TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  date DATE DEFAULT CURRENT_DATE,
   company INT REFERENCES actors(id) ON DELETE RESTRICT NOT NULL,
   charged BOOLEAN NOT NULL DEFAULT FALSE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
-INSERT INTO bills (url, company) VALUES ('url', 1);
+INSERT INTO bills (code, url, company) VALUES (1, 'url', 1);
 
 CREATE TABLE trips (
   id SERIAL PRIMARY KEY,

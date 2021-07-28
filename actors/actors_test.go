@@ -47,6 +47,38 @@ func TestGetActors(t *testing.T) {
 	}
 }
 
+func TestGetCompanies(t *testing.T) {
+	router := httprouter.New()
+	router.GET("/actors", GetActors)
+
+	req, err := http.NewRequest("GET", "/actors", nil)
+	if err != nil {
+		log.Fatal(err)
+		t.Error("Could no make a get request to /actos")
+	}
+
+	rr := httptest.NewRecorder()
+	router.ServeHTTP(rr, req)
+
+	t.Log("testing OK status code")
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("status = %v, want %v", status, http.StatusOK)
+	}
+
+	t.Log("testing for an array of actors")
+	actors := []types.Actor{}
+	body, err := ioutil.ReadAll(rr.Body)
+	if err != nil {
+		log.Fatal(err)
+		t.Error("Could not read body of response")
+	}
+
+	err = json.Unmarshal(body, &actors)
+	if err != nil {
+		t.Error("Response body does not contain an array of type Actor")
+	}
+}
+
 func TestCreateActor(t *testing.T) {
 	router := httprouter.New()
 	router.POST("/actors", CreateActor)
@@ -851,7 +883,7 @@ func TestDeleteActorTakenActor(t *testing.T) {
 		log.Fatal(err)
 		t.Error("Could not read body of response")
 	}
-	wanted := "El actor que intenta borrar tiene una o mas transacciones asociadas por lo que no puede ser eliminado"
+	wanted := "El actor que intenta borrar tiene una o mas facturas asociadas por lo que no puede ser eliminado"
 	if string(body2) != wanted {
 		t.Errorf("response = %v, wanted %v", string(body2), wanted)
 	}

@@ -50,6 +50,7 @@ type Note struct {
 
 type Bill struct {
 	Id      int
+	Code    string
 	Url     string
 	Date    string
 	Company struct {
@@ -94,3 +95,5 @@ type IdResponse struct {
 
 var MaxTransactionAmount = 1e14
 var MaxBalanceAmount = 1e19
+var DateFormat = "2006-01-02"
+var ImageTypes = []string{".webp", ".svg", ".png", ".apng", ".avif", ".gif", ".jpg", ".jpeg", ".jfif", ".pjpeg", ".pjp"}

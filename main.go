@@ -40,6 +40,7 @@ func main() {
 	router.PUT("/pending_transactions/:id", CustomOptions(pending_transactions.ExecutePendingTransaction))
 
 	router.GET("/actors", CustomOptions(actors.GetActors))
+	router.GET("/companies", CustomOptions(actors.GetCompanies))
 	router.POST("/actors", CustomOptions(actors.CreateActor))
 	router.PATCH("/actors/:id", CustomOptions(actors.PatchActor))
 	router.DELETE("/actors/:id", CustomOptions(actors.DeleteActor))

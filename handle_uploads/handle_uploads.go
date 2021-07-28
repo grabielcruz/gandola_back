@@ -6,21 +6,36 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
+	"example.com/backend_gandola_soft/types"
 	"example.com/backend_gandola_soft/utils"
 	"github.com/julienschmidt/httprouter"
 )
 
 func UploadFile(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+
 	file, header, err := r.FormFile("image")
 	if err != nil {
 		utils.SendInternalServerError(err, w)
 		return
 	}
 	defer file.Close()
+	validImage := false
+	extension := strings.ToLower(filepath.Ext(header.Filename))
+	for _, v := range types.ImageTypes {
+		if extension == v {
+			validImage = true
+			break
+		}
+	}
+	if !validImage {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(w, "El archivo del tipo %v no es una imagen reconocida", extension)
+		return
+	}
 
-	extension := filepath.Ext(header.Filename)
 	id := ps.ByName("id")
 	date := time.Now()
 	year, month, day := date.Local().Date()
