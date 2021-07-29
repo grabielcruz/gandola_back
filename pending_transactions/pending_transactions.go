@@ -380,17 +380,18 @@ func ExecutePendingTransaction(w http.ResponseWriter, r *http.Request, ps httpro
 	if pendingTransaction.Currency == "USD" {
 		if pendingTransaction.Type == "input" {
 			newUSDBalance = lastUSDBalance + pendingTransaction.Amount
-			if newUSDBalance < 0 {
-				w.WriteHeader(http.StatusBadRequest)
-				fmt.Fprintf(w, "Su transacción pendiente de id %v no pudo ser ejecutada porque genera un balance menor a cero (0)", requestedId)
-				return
-			}
-		} 
-		if pendingTransaction.Type == "output" {
-			newUSDBalance = lastUSDBalance - pendingTransaction.Amount
 			if newUSDBalance > float32(types.MaxBalanceAmount) {
 				w.WriteHeader(http.StatusBadRequest)
 				fmt.Fprintf(w, "Su transacción no pudo ser ejecutada porque excede el balance máximo permitido")
+				return
+			}
+		} 
+
+		if pendingTransaction.Type == "output" {
+			newUSDBalance = lastUSDBalance - pendingTransaction.Amount
+			if newUSDBalance < 0 {
+				w.WriteHeader(http.StatusBadRequest)
+				fmt.Fprintf(w, "Su transacción pendiente de id %v no pudo ser ejecutada porque genera un balance menor a cero (0)", requestedId)
 				return
 			}
 		}
@@ -399,17 +400,18 @@ func ExecutePendingTransaction(w http.ResponseWriter, r *http.Request, ps httpro
 	if pendingTransaction.Currency == "VES" {
 		if pendingTransaction.Type == "input" {
 			newVESBalance = lastVESBalance + pendingTransaction.Amount
-			if newVESBalance < 0 {
-				w.WriteHeader(http.StatusBadRequest)
-				fmt.Fprintf(w, "Su transacción pendiente de id %v no pudo ser ejecutada porque genera un balance menor a cero (0)", requestedId)
-				return
-			}
-		} 
-		if pendingTransaction.Type == "output" {
-			newVESBalance = lastVESBalance - pendingTransaction.Amount
 			if newVESBalance > float32(types.MaxBalanceAmount) {
 				w.WriteHeader(http.StatusBadRequest)
 				fmt.Fprintf(w, "Su transacción no pudo ser ejecutada porque excede el balance máximo permitido")
+				return
+			}
+		} 
+
+		if pendingTransaction.Type == "output" {
+			newVESBalance = lastVESBalance - pendingTransaction.Amount
+			if newVESBalance < 0 {
+				w.WriteHeader(http.StatusBadRequest)
+				fmt.Fprintf(w, "Su transacción pendiente de id %v no pudo ser ejecutada porque genera un balance menor a cero (0)", requestedId)
 				return
 			}
 		}
@@ -420,6 +422,11 @@ func ExecutePendingTransaction(w http.ResponseWriter, r *http.Request, ps httpro
 
 	rowsId, err := db.Query(insertTransactionQuery)
 	if err != nil {
+		if err.Error() == `pq: new row for relation "transactions_with_balances" violates check constraint "transactions_with_balances_usd_balance_check"` {
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprintf(w, "Su transacción pendiente de id %v no pudo ser ejecutada porque genera un balance menor a cero (0)", requestedId)
+			return
+		}
 		utils.SendInternalServerError(err, w)
 		return
 	}
