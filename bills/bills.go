@@ -173,7 +173,6 @@ func PatchBill(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		w.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintf(w, "No se pudo leer el cuerpo de la petición")
 	}
-	
 	err = json.Unmarshal(body, &newBill)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)

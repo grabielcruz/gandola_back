@@ -38,7 +38,7 @@ CREATE TABLE bills (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
-INSERT INTO bills (code, url, company) VALUES (1, 'url', 1);
+INSERT INTO bills (code, url, company) VALUES (1, 'url', 2);
 
 CREATE TABLE trips (
   id SERIAL PRIMARY KEY,
