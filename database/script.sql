@@ -7,7 +7,7 @@ CREATE DATABASE gandola_soft;
 CREATE TYPE transaction_type AS ENUM ('output', 'input');
 CREATE TYPE currency_type AS ENUM('USD', 'VES');
 CREATE TYPE urgency_type AS ENUM('low', 'medium', 'high', 'critical');
-CREATE TYPE actor_type AS ENUM('personnel', 'third', 'mine', 'contractee');
+CREATE TYPE actor_type AS ENUM('personnel', 'third', 'mine', 'contractee', 'driver');
 CREATE EXTENSION CITEXT;
 -- tipos de actores:
 --   - El empleado: Luis D, papa, yo, Niliberto
@@ -27,6 +27,7 @@ CREATE TABLE actors (
 
 INSERT INTO actors (type, name, national_id, address, notes) VALUES ('third', 'Externo', 'no id', 'no address', 'no notes');
 INSERT INTO actors (type, name, national_id, address, notes) VALUES ('contractee', 'Compañía cero', 'no id', 'no address', 'no notes');
+INSERT INTO actors (type, name, national_id, address, notes) VALUES ('driver', 'Conductor cero', 'no id', 'no address', 'no notes');
 
 CREATE TABLE bills (
   id SERIAL PRIMARY KEY,
@@ -40,22 +41,40 @@ CREATE TABLE bills (
 
 INSERT INTO bills (code, url, company) VALUES (1, 'url', 2);
 
+CREATE TABLE trucks (
+  id SERIAL PRIMARY KEY,
+  name TEXT NOT NULL,
+  data TEXT NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO trucks (name, data) VALUES ('primer camion', 'bla bla \n bla bla bla');
+
+CREATE TABLE truck_docs (
+  id SERIAL PRIMARY KEY,
+  truck INT REFERENCES trucks(id) ON DELETE RESTRICT NOT NULL,
+  url TEXT NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE trips (
   id SERIAL PRIMARY KEY,
-  date TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  date DATE DEFAULT CURRENT_DATE,
   origin INT REFERENCES actors(id) ON DELETE RESTRICT NOT NULL,
   destination INT REFERENCES actors(id) ON DELETE RESTRICT NOT NULL,
   cargo TEXT NOT NULL,
-  driver TEXT NOT NULL,
-  truck TEXT NOT NULL,
+  amount INT NOT NULL,
+  unit TEXT NOT NULL,
+  driver INT REFERENCES actors(id) ON DELETE RESTRICT NOT NULL,
+  truck INT REFERENCES trucks(id) ON DELETE RESTRICT NOT NULL,
   bill INT REFERENCES bills(id) ON DELETE RESTRICT,
-  voucher TEXT,
+  voucher_url TEXT,
   complete BOOLEAN NOT NULL DEFAULT FALSE,
   notes TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
-INSERT INTO trips (origin, destination, cargo, driver, truck, voucher, notes) VALUES (1, 1, '25 metros piedra', 'chofer', 'camion', 'vauche', 'notes' );
+INSERT INTO trips (origin, destination, cargo, amount, unit, driver, truck, voucher_url, notes) VALUES (1, 1, 'piedra', 25, 'metros', 3, 1, 'no_image', 'notes');
 
 CREATE TABLE transactions_with_balances (
   id SERIAL PRIMARY KEY,
