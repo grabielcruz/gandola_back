@@ -62,6 +62,21 @@ type Bill struct {
 	CreatedAt string
 }
 
+type Truck struct {
+	Id         int
+	Name       string
+	Data       string
+	Docs       []string
+	Created_At string
+}
+
+type TrucksDoc struct {
+	Id         int
+	Truck      int
+	Url        string
+	Created_At string
+}
+
 type Trip struct {
 	Id     int
 	Date   string

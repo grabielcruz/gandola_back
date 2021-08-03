@@ -10,6 +10,7 @@ import (
 	"example.com/backend_gandola_soft/notes"
 	"example.com/backend_gandola_soft/pending_transactions"
 	"example.com/backend_gandola_soft/transactions"
+	"example.com/backend_gandola_soft/trucks"
 
 	"github.com/julienschmidt/httprouter"
 )
@@ -56,6 +57,11 @@ func main() {
 	router.POST("/bills", CustomOptions(bills.CreateBill))
 	router.PATCH("/bills/:id", CustomOptions(bills.PatchBill))
 	router.DELETE("/bills/:id", CustomOptions(bills.DeleteBill))//TODO: delete actual image when deleting bill
+
+	router.GET("/trucks", CustomOptions(trucks.GetTrucks))
+	router.POST("/trucks", CustomOptions(trucks.CreateTruck))
+	router.PATCH("/trucks/:id", CustomOptions(trucks.PatchTruck))
+	router.DELETE("/trucks/:id", CustomOptions(trucks.DeleteTruck))
 
 	router.ServeFiles("/public/*filepath", http.Dir("./public"))
 	router.POST("/upload/:id", CustomOptions(handle_uploads.UploadFile))

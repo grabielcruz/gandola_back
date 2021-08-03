@@ -43,7 +43,7 @@ INSERT INTO bills (code, url, company) VALUES (1, 'url', 2);
 
 CREATE TABLE trucks (
   id SERIAL PRIMARY KEY,
-  name TEXT NOT NULL,
+  name TEXT UNIQUE NOT NULL,
   data TEXT NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );

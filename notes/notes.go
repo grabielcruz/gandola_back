@@ -70,6 +70,7 @@ func CreateNote(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	defer db.Close()
 
 	insertNoteQuery := fmt.Sprintf("INSERT INTO notes (description, urgency) VALUES ('%v', '%v') RETURNING id, description, urgency, attended, created_at, attended_at;", note.Description, note.Urgency)
+	insertedNote := types.Note{}
 
 	rows, err := db.Query(insertNoteQuery)
 	if err != nil {
@@ -77,13 +78,13 @@ func CreateNote(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		return
 	}
 	for rows.Next() {
-		err = rows.Scan(&note.Id, &note.Description, &note.Urgency, &note.Attended, &note.CreatedAt, &note.AttendedAt)
+		err = rows.Scan(&insertedNote.Id, &insertedNote.Description, &insertedNote.Urgency, &insertedNote.Attended, &insertedNote.CreatedAt, &insertedNote.AttendedAt)
 		if err != nil {
 			utils.SendInternalServerError(err, w)
 			return
 		}
 	}
-	response, err := json.Marshal(note)
+	response, err := json.Marshal(insertedNote)
 	if err != nil {
 		utils.SendInternalServerError(err, w)
 		return
