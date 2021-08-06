@@ -66,7 +66,7 @@ type Truck struct {
 	Id         int
 	Name       string
 	Data       string
-	Photos     []string
+	Photos       []string
 	Created_At string
 }
 

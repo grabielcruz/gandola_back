@@ -45,17 +45,19 @@ CREATE TABLE trucks (
   id SERIAL PRIMARY KEY,
   name TEXT UNIQUE NOT NULL,
   data TEXT NOT NULL,
+  photos TEXT DEFAULT '[]',
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
-INSERT INTO trucks (name, data) VALUES ('primer camion', 'bla bla \n bla bla bla'), ('segundo camion', 'no photo');
+INSERT INTO trucks (name, data, photos) VALUES ('primer camion', 'bla bla \n bla bla bla', '["url1","url2"]');
+INSERT INTO trucks (name, data) VALUES ('segundo camion', 'bla bla \n bla bla bla');
 
-CREATE TABLE truck_photos (
-  id SERIAL PRIMARY KEY,
-  truck INT REFERENCES trucks(id) ON DELETE RESTRICT NOT NULL,
-  url TEXT NOT NULL,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
+-- CREATE TABLE truck_docs (
+--   id SERIAL PRIMARY KEY,
+--   truck INT REFERENCES trucks(id) ON DELETE RESTRICT NOT NULL,
+--   url TEXT NOT NULL,
+--   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+-- );  
 
 INSERT INTO truck_photos (truck, url) VALUES ('1', 'url_1'), ('1', 'url_2');
 

@@ -15,6 +15,8 @@ import (
 
 func GetTrucks(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	trucks := []types.Truck{}
+	photos_array := []string{}
+	var photos string
 	db := database.ConnectDB()
 	defer db.Close()
 	rows, err := db.Query("SELECT * FROM trucks ORDER BY id;")
@@ -25,27 +27,21 @@ func GetTrucks(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	defer rows.Close()
 	for rows.Next() {
 		truck := types.Truck{}
-		err := rows.Scan(&truck.Id, &truck.Name, &truck.Data, &truck.Created_At)
+		err := rows.Scan(&truck.Id, &truck.Name, &truck.Data, &photos, &truck.Created_At)
 		if err != nil {
 			utils.SendInternalServerError(err, w)
 			return
 		}
-		photos_query := fmt.Sprintf("SELECT url FROM truck_photos WHERE truck=%v;", truck.Id)
-		photo_rows, err := db.Query(photos_query)
-		if err != nil {
-			utils.SendInternalServerError(err, w)
-			return
-		}
-		defer photo_rows.Close()
-		for photo_rows.Next() {
-			var url string
-			err := photo_rows.Scan(&url)
+		if len(photos) > 0 || photos == "null" {
+			err = json.Unmarshal([]byte(photos), &photos_array)
 			if err != nil {
 				utils.SendInternalServerError(err, w)
 				return
 			}
-			truck.Photos = append(truck.Photos, url)
+		} else {
+			photos_array = []string{}
 		}
+		truck.Photos = photos_array
 		trucks = append(trucks, truck)
 	}
 
@@ -83,10 +79,20 @@ func CreateTruck(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		return
 	}
 
+	if len(truck.Photos) == 0 {
+		truck.Photos = []string{}
+	}
+
+	json_photos, err := json.Marshal(truck.Photos)
+	if err != nil {
+		utils.SendInternalServerError(err, w)
+		return
+	}
+
 	db := database.ConnectDB()
 	defer db.Close()
 
-	insertTruckQuery := fmt.Sprintf("INSERT INTO trucks (name, data) VALUES ('%v', '%v') RETURNING id, name, data, created_at", truck.Name, truck.Data)
+	insertTruckQuery := fmt.Sprintf("INSERT INTO trucks (name, data, photos) VALUES ('%v', '%v', '%v') RETURNING id, name, data, photos, created_at", truck.Name, truck.Data, string(json_photos))
 	insertedTruck := types.Truck{}
 
 	rows, err := db.Query(insertTruckQuery)
@@ -99,13 +105,26 @@ func CreateTruck(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		utils.SendInternalServerError(err, w)
 		return
 	}
+	var newPhotos string
+	photos_array := []string{}
 	for rows.Next() {
-		err = rows.Scan(&insertedTruck.Id, &insertedTruck.Name, &insertedTruck.Data, &insertedTruck.Created_At)
+		err = rows.Scan(&insertedTruck.Id, &insertedTruck.Name, &insertedTruck.Data, &newPhotos, &insertedTruck.Created_At)
 		if err != nil {
 			utils.SendInternalServerError(err, w)
 			return
 		}
 	}
+	if len(newPhotos) > 0 || newPhotos == "null" {
+		err = json.Unmarshal([]byte(newPhotos), &photos_array)
+		if err != nil {
+			utils.SendInternalServerError(err, w)
+			return
+		}
+	} else {
+		photos_array = []string{}
+	}
+	insertedTruck.Photos = photos_array
+
 	response, err := json.Marshal(insertedTruck)
 	if err != nil {
 		utils.SendInternalServerError(err, w)
@@ -153,11 +172,21 @@ func PatchTruck(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		return
 	}
 
+	if len(truck.Photos) == 0 {
+		truck.Photos = []string{}
+	}
+
+	json_photos, err := json.Marshal(truck.Photos)
+	if err != nil {
+		utils.SendInternalServerError(err, w)
+		return
+	}
+
 	db := database.ConnectDB()
 	defer db.Close()
 
 	var updatedTruck types.Truck
-	patchTruckQuery := fmt.Sprintf("UPDATE trucks SET name='%v', data='%v' WHERE id='%v' RETURNING Id, name, data, created_at;", truck.Name, truck.Data, truckIdNumber)
+	patchTruckQuery := fmt.Sprintf("UPDATE trucks SET name='%v', data='%v', photos='%v' WHERE id='%v' RETURNING Id, name, data, photos, created_at;", truck.Name, truck.Data, string(json_photos), truckIdNumber)
 	truckRow, err := db.Query(patchTruckQuery)
 	if err != nil {
 		if err.Error() == "pq: duplicate key value violates unique constraint \"trucks_name_key\"" {
@@ -169,8 +198,10 @@ func PatchTruck(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		return
 	}
 	defer truckRow.Close()
+	var newPhotos string
+	photos_array := []string{}
 	for truckRow.Next() {
-		err = truckRow.Scan(&updatedTruck.Id, &updatedTruck.Name, &updatedTruck.Data, &updatedTruck.Created_At)
+		err = truckRow.Scan(&updatedTruck.Id, &updatedTruck.Name, &updatedTruck.Data, &newPhotos, &updatedTruck.Created_At)
 		if err != nil {
 			utils.SendInternalServerError(err, w)
 			return
@@ -182,6 +213,17 @@ func PatchTruck(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		fmt.Fprintf(w, "El camión especificado no existe")
 		return
 	}
+
+	if len(newPhotos) > 0 || newPhotos == "null" {
+		err = json.Unmarshal([]byte(newPhotos), &photos_array)
+		if err != nil {
+			utils.SendInternalServerError(err, w)
+			return
+		}
+	} else {
+		photos_array = []string{}
+	}
+	updatedTruck.Photos = photos_array
 
 	response, err := json.Marshal(updatedTruck)
 	if err != nil {
@@ -246,7 +288,8 @@ func DeleteTruck(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 
 func GetLastTruck(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	var lastTruck types.Truck
-
+	photos_array := []string{}
+	var photos string
 	db := database.ConnectDB()
 	defer db.Close()
 	query := "SELECT * FROM trucks ORDER BY id DESC LIMIT 1;"
@@ -258,11 +301,21 @@ func GetLastTruck(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 
 	defer rows.Close()
 	for rows.Next() {
-		err := rows.Scan(&lastTruck.Id, &lastTruck.Name, &lastTruck.Data, &lastTruck.Created_At)
+		err := rows.Scan(&lastTruck.Id, &lastTruck.Name, &lastTruck.Data, &photos, &lastTruck.Created_At)
 		if err != nil {
 			utils.SendInternalServerError(err, w)
 			return
 		}
+		if len(photos) > 0 || photos == "null" {
+			err = json.Unmarshal([]byte(photos), &photos_array)
+			if err != nil {
+				utils.SendInternalServerError(err, w)
+				return
+			}
+		} else {
+			photos_array = []string{}
+		}
+		lastTruck.Photos = photos_array
 	}
 
 	if lastTruck.Id == 0 {
