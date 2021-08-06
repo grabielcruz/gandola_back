@@ -48,14 +48,16 @@ CREATE TABLE trucks (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
-INSERT INTO trucks (name, data) VALUES ('primer camion', 'bla bla \n bla bla bla');
+INSERT INTO trucks (name, data) VALUES ('primer camion', 'bla bla \n bla bla bla'), ('segundo camion', 'no photo');
 
-CREATE TABLE truck_docs (
+CREATE TABLE truck_photos (
   id SERIAL PRIMARY KEY,
   truck INT REFERENCES trucks(id) ON DELETE RESTRICT NOT NULL,
   url TEXT NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+
+INSERT INTO truck_photos (truck, url) VALUES ('1', 'url_1'), ('1', 'url_2');
 
 CREATE TABLE trips (
   id SERIAL PRIMARY KEY,

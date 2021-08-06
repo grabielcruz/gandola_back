@@ -803,7 +803,7 @@ func TestDeleteActor(t *testing.T) {
 	req2, err := http.NewRequest("DELETE", requesUrl, nil)
 	if err != nil {
 		log.Fatal(err)
-		t.Error("Could not make a patch request to /actors/:id")
+		t.Error("Could not make a delete request to /actors/:id")
 	}
 	rr2 := httptest.NewRecorder()
 	router.ServeHTTP(rr2, req2)

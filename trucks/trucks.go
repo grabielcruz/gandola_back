@@ -30,8 +30,25 @@ func GetTrucks(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 			utils.SendInternalServerError(err, w)
 			return
 		}
+		photos_query := fmt.Sprintf("SELECT url FROM truck_photos WHERE truck=%v;", truck.Id)
+		photo_rows, err := db.Query(photos_query)
+		if err != nil {
+			utils.SendInternalServerError(err, w)
+			return
+		}
+		defer photo_rows.Close()
+		for photo_rows.Next() {
+			var url string
+			err := photo_rows.Scan(&url)
+			if err != nil {
+				utils.SendInternalServerError(err, w)
+				return
+			}
+			truck.Photos = append(truck.Photos, url)
+		}
 		trucks = append(trucks, truck)
 	}
+
 	json_trucks, err := json.Marshal(trucks)
 	if err != nil {
 		utils.SendInternalServerError(err, w)

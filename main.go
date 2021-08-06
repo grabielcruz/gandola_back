@@ -64,7 +64,8 @@ func main() {
 	router.DELETE("/trucks/:id", CustomOptions(trucks.DeleteTruck))
 
 	router.ServeFiles("/public/*filepath", http.Dir("./public"))
-	router.POST("/upload/:id", CustomOptions(handle_uploads.UploadFile))
+	router.POST("/uploadbill/:id", CustomOptions(handle_uploads.UploadBill))
+	router.POST("/uploadTrucks/:id", CustomOptions(handle_uploads.UploadTrucksPhotos))
 
 	log.Fatal(http.ListenAndServe(":8080", router))
 }
