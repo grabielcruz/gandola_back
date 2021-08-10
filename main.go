@@ -70,6 +70,7 @@ func main() {
 	log.Fatal(http.ListenAndServe(":8080", router))
 }
 
+//TODO: check concurrent last delete on transaction
 //TOCONSIDER: maybe I should write tests on demand :D, it takes a hell of time!!!
 //TODO: check sql injection protection
 //TODO: bills pictures associated with trips, a table for bills, a table for trips, and a table to relationate both of them

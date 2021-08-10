@@ -114,7 +114,7 @@ func CreateTruck(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 			return
 		}
 	}
-	if len(newPhotos) > 0 || newPhotos == "null" {
+	if len(newPhotos) > 0 {
 		err = json.Unmarshal([]byte(newPhotos), &photos_array)
 		if err != nil {
 			utils.SendInternalServerError(err, w)
@@ -214,7 +214,7 @@ func PatchTruck(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		return
 	}
 
-	if len(newPhotos) > 0 || newPhotos == "null" {
+	if len(newPhotos) > 0 {
 		err = json.Unmarshal([]byte(newPhotos), &photos_array)
 		if err != nil {
 			utils.SendInternalServerError(err, w)

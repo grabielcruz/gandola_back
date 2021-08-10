@@ -83,6 +83,7 @@ func UploadTrucksPhotos(w http.ResponseWriter, r *http.Request, ps httprouter.Pa
 	files := formdata.File["images"]
 
 	for _, f := range files {
+		validImage := false
 		file, err := f.Open()
 		if err != nil {
 			utils.SendInternalServerError(err, w)
@@ -91,6 +92,17 @@ func UploadTrucksPhotos(w http.ResponseWriter, r *http.Request, ps httprouter.Pa
 		defer file.Close()
 
 		extension := strings.ToLower(filepath.Ext(f.Filename))
+		for _, v := range types.ImageTypes {
+			if extension == v {
+				validImage = true
+				break
+			}
+		}
+		if !validImage {
+			w.WriteHeader(http.StatusBadRequest)
+			fmt.Fprintf(w, "El archivo del tipo %v no es una imagen reconocida", extension)
+			return
+		}
 		id := ps.ByName("id")
 		date := time.Now()
 		year, month, day := date.Local().Date()
@@ -111,7 +123,7 @@ func UploadTrucksPhotos(w http.ResponseWriter, r *http.Request, ps httprouter.Pa
 			utils.SendInternalServerError(err, w)
 			return
 		}
-		photos = append(photos, f.Filename)
+		photos = append(photos, tempFile.Name())
 	}
 	response, err := json.Marshal(photos)
 	if err != nil {
@@ -119,5 +131,5 @@ func UploadTrucksPhotos(w http.ResponseWriter, r *http.Request, ps httprouter.Pa
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	fmt.Fprint(w, string(response))
+	w.Write(response)
 }
